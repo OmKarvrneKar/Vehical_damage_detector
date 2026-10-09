@@ -1,0 +1,13 @@
+# YOLO dataset config. Put images in images/{train,val,test} and YOLO-format labels in labels/{train,val,test}.
+path: data/dataset
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: scratch
+  1: dent
+  2: crack
+  3: broken_part
+  4: glass_damage
+  5: bumper_damage
+  6: severe

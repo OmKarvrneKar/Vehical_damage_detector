@@ -1,0 +1,107 @@
+{% extends "base_admin.html" %}
+{% block title %}All Damage Reports{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">All Official Damage Reports</h1>
+    <p class="page-subtitle">Master repository of verified vehicle damage assessments</p>
+  </div>
+  <div>
+    <a href="{{ url_for('admin_analyze_page') }}" class="btn btn-accent">
+      <span>🔍</span> New Vehicle Analysis
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 250px;">
+      <input type="text" id="reportSearch" class="form-control" placeholder="Search by Report ID, Owner Name, Email, or Vehicle…">
+    </div>
+    <div style="width: 180px;">
+      <select id="severityFilter" class="form-control">
+        <option value="all">All Severities</option>
+        <option value="Minor">Minor</option>
+        <option value="Moderate">Moderate</option>
+        <option value="Severe">Severe</option>
+        <option value="None">None / Clear</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Report ID</th>
+          <th>Owner Name</th>
+          <th>Owner Email</th>
+          <th>Vehicle</th>
+          <th>Damage</th>
+          <th>Categories</th>
+          <th>Severity</th>
+          <th>Estimated Cost</th>
+          <th>Analysis Date</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="reportsTableBody">
+        <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading official damage reports…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  async function loadReports() {
+    const q = document.getElementById('reportSearch').value.trim();
+    const sev = document.getElementById('severityFilter').value;
+    const url = `/api/admin/reports?search=${encodeURIComponent(q)}&severity=${encodeURIComponent(sev)}`;
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      renderReports(data.reports || []);
+    } catch (e) {
+      toast('Failed to load reports', 'error');
+    }
+  }
+
+  function renderReports(reports) {
+    const tbody = document.getElementById('reportsTableBody');
+    if (!reports || reports.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">No matching damage reports found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = reports.map(r => `
+      <tr>
+        <td><strong>${esc(r.report_id)}</strong></td>
+        <td><strong>${esc(r.user_full_name || '-')}</strong></td>
+        <td style="font-size: 0.85rem;">${esc(r.user_email || '-')}</td>
+        <td>${esc(r.vehicle_type || 'Vehicle')}</td>
+        <td>${r.damage_detected === 'Yes' ? '<span style="color: var(--accent-red); font-weight: 600;">Yes</span>' : '<span style="color: var(--accent-green);">No</span>'}</td>
+        <td style="font-size: 0.85rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${esc(r.damage_types)}">${esc(r.damage_types || '-')}</td>
+        <td>${severityBadge(r.severity)}</td>
+        <td><strong>${esc(r.cost_range || '₹0')}</strong></td>
+        <td style="color: var(--text-muted); font-size: 0.82rem; white-space: nowrap;">${esc(r.timestamp)}</td>
+        <td>
+          <a href="/admin/reports/${encodeURIComponent(r.report_id)}" class="btn btn-outline btn-sm">View Report</a>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  let repDebounce;
+  document.getElementById('reportSearch').oninput = () => {
+    clearTimeout(repDebounce);
+    repDebounce = setTimeout(loadReports, 250);
+  };
+  document.getElementById('severityFilter').onchange = loadReports;
+
+  loadReports();
+</script>
+{% endblock %}

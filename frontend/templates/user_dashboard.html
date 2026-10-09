@@ -1,0 +1,140 @@
+{% extends "base_user.html" %}
+{% block title %}User Dashboard{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Welcome back, {{ user }}!</h1>
+    <p class="page-subtitle">Your personal vehicle inspection and damage assessment portal</p>
+  </div>
+  <div style="display: flex; gap: 0.75rem;">
+    <a href="{{ url_for('user_reports_page') }}" class="btn btn-primary">
+      <span>📋</span> View My Reports
+    </a>
+    <a href="{{ url_for('user_analyze_page') }}" class="btn btn-outline">
+      <span>🔬</span> Temporary Analysis
+    </a>
+  </div>
+</div>
+
+<!-- Personal Stats Grid -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-label">Official Reports</span>
+    <span class="stat-value" id="userReportCount">-</span>
+    <span class="stat-sub">Verified inspection reports</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Damage Cases</span>
+    <span class="stat-value" id="userDamageCount" style="color: var(--accent-amber);">-</span>
+    <span class="stat-sub">Reports with identified damage</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Latest Inspection</span>
+    <span class="stat-value" id="userLatestDate" style="font-size: 1.15rem; color: #fff;">-</span>
+    <span class="stat-sub">Date of most recent assessment</span>
+  </div>
+</div>
+
+<!-- Severity Distribution -->
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-title">
+    <span>My Vehicle Severity Distribution</span>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center;">
+      <span class="badge badge-minor" style="margin-bottom: 0.4rem;">Minor</span>
+      <h3 id="uSevMinor" style="font-size: 1.5rem; margin-top: 0.2rem;">0</h3>
+    </div>
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center;">
+      <span class="badge badge-moderate" style="margin-bottom: 0.4rem;">Moderate</span>
+      <h3 id="uSevModerate" style="font-size: 1.5rem; margin-top: 0.2rem;">0</h3>
+    </div>
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center;">
+      <span class="badge badge-severe" style="margin-bottom: 0.4rem;">Severe</span>
+      <h3 id="uSevSevere" style="font-size: 1.5rem; margin-top: 0.2rem;">0</h3>
+    </div>
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center;">
+      <span class="badge badge-none" style="margin-bottom: 0.4rem;">No Damage</span>
+      <h3 id="uSevNone" style="font-size: 1.5rem; margin-top: 0.2rem;">0</h3>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Official Reports -->
+<div class="card">
+  <div class="card-title">
+    <span>Recent Official Reports</span>
+    <a href="{{ url_for('user_reports_page') }}" class="btn btn-outline btn-sm">All My Reports →</a>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Report ID</th>
+          <th>Inspection Date</th>
+          <th>Vehicle</th>
+          <th>Damage Found</th>
+          <th>Severity</th>
+          <th>Estimated Cost</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="userReportsTableBody">
+        <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading your reports…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  async function loadUserDashboard() {
+    try {
+      const res = await fetch('/api/user/dashboard-stats');
+      const data = await res.json();
+
+      document.getElementById('userReportCount').textContent = data.total_reports ?? 0;
+      document.getElementById('userDamageCount').textContent = data.total_damaged ?? 0;
+      document.getElementById('userLatestDate').textContent = data.latest_date || 'No reports yet';
+
+      const sev = data.severity || {};
+      document.getElementById('uSevMinor').textContent = sev['Minor'] ?? 0;
+      document.getElementById('uSevModerate').textContent = sev['Moderate'] ?? 0;
+      document.getElementById('uSevSevere').textContent = sev['Severe'] ?? 0;
+      document.getElementById('uSevNone').textContent = sev['None'] ?? 0;
+
+      const tbody = document.getElementById('userReportsTableBody');
+      if (data.recent_reports && data.recent_reports.length > 0) {
+        tbody.innerHTML = data.recent_reports.map(r => `
+          <tr>
+            <td><strong>${esc(r.report_id)}</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">${esc(r.timestamp)}</td>
+            <td>${esc(r.vehicle_type || 'Vehicle')}</td>
+            <td>${r.damage_detected === 'Yes' ? '<span style="color: var(--accent-red); font-weight: 600;">Yes</span>' : '<span style="color: var(--accent-green);">No</span>'}</td>
+            <td>${severityBadge(r.severity)}</td>
+            <td><strong>${esc(r.cost_range || '₹0')}</strong></td>
+            <td>
+              <a href="/user/reports/${encodeURIComponent(r.report_id)}" class="btn btn-primary btn-sm">View Report</a>
+            </td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+              <p style="margin-bottom: 0.5rem; font-size: 1rem;">No official vehicle damage reports have been assigned to your account yet.</p>
+              <small>When an inspector assesses your vehicle, the verified report will appear here.</small>
+            </td>
+          </tr>
+        `;
+      }
+    } catch (e) {
+      toast('Failed to load dashboard data: ' + e.message, 'error');
+    }
+  }
+
+  loadUserDashboard();
+</script>
+{% endblock %}

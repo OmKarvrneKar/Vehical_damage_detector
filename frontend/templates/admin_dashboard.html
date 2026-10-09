@@ -1,0 +1,224 @@
+{% extends "base_admin.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Administrator Dashboard</h1>
+    <p class="page-subtitle">Overview of system inspections, user registrations, and damage analytics</p>
+  </div>
+  <div style="display: flex; gap: 0.75rem;">
+    <a href="{{ url_for('admin_analyze_page') }}" class="btn btn-accent">
+      <span>🔍</span> New Vehicle Analysis
+    </a>
+    <a href="{{ url_for('admin_download_excel_page') }}" class="btn btn-outline">
+      <span>📥</span> Export Excel
+    </a>
+  </div>
+</div>
+
+<div class="stats-grid" id="statsCards">
+  <div class="stat-card">
+    <span class="stat-label">Registered Users</span>
+    <span class="stat-value" id="statUsers">-</span>
+    <span class="stat-sub">Active vehicle owner accounts</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Total Analyses Run</span>
+    <span class="stat-value" id="statAnalyses">-</span>
+    <span class="stat-sub">All inspection attempts</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Official Damage Reports</span>
+    <span class="stat-value" id="statReports">-</span>
+    <span class="stat-sub">Successfully generated reports</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Damage Detected Cases</span>
+    <span class="stat-value" id="statDamaged" style="color: var(--accent-amber);">-</span>
+    <span class="stat-sub">Vehicles with visible damage</span>
+  </div>
+</div>
+
+<!-- Severity Distribution Summary Card -->
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-title">
+    <span>Severity Distribution</span>
+    <small style="font-size: 0.82rem; color: var(--text-muted); font-weight: normal;">Based on official damage assessments</small>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;" id="severityStats">
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center;">
+      <span class="badge badge-minor" style="margin-bottom: 0.5rem;">Minor</span>
+      <h3 id="sevMinor" style="font-size: 1.5rem; margin-top: 0.2rem;">0</h3>
+    </div>
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center;">
+      <span class="badge badge-moderate" style="margin-bottom: 0.5rem;">Moderate</span>
+      <h3 id="sevModerate" style="font-size: 1.5rem; margin-top: 0.2rem;">0</h3>
+    </div>
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center;">
+      <span class="badge badge-severe" style="margin-bottom: 0.5rem;">Severe</span>
+      <h3 id="sevSevere" style="font-size: 1.5rem; margin-top: 0.2rem;">0</h3>
+    </div>
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center;">
+      <span class="badge badge-none" style="margin-bottom: 0.5rem;">Clear / None</span>
+      <h3 id="sevNone" style="font-size: 1.5rem; margin-top: 0.2rem;">0</h3>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Vehicle Analyses Table -->
+<div class="card">
+  <div class="card-title">
+    <span>Recent Vehicle Damage Analyses</span>
+    <a href="{{ url_for('admin_reports_page') }}" class="btn btn-outline btn-sm">View All Reports →</a>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Report ID</th>
+          <th>Owner Name</th>
+          <th>Owner Email</th>
+          <th>Vehicle</th>
+          <th>Damage</th>
+          <th>Severity</th>
+          <th>Estimated Cost</th>
+          <th>Analysis Date</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="recentAnalysesTable">
+        <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading recent analyses…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+  <!-- Recent User Registrations -->
+  <div class="card">
+    <div class="card-title">
+      <span>Recent User Registrations</span>
+      <a href="{{ url_for('admin_users_page') }}" class="btn btn-outline btn-sm">Manage Users →</a>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Email</th>
+            <th>Registered</th>
+          </tr>
+        </thead>
+        <tbody id="recentUsersTable">
+          <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading registrations…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Login Activity -->
+  <div class="card">
+    <div class="card-title">
+      <span>Recent Login Activity</span>
+      <a href="{{ url_for('admin_login_activity_page') }}" class="btn btn-outline btn-sm">Full Activity Log →</a>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="recentLoginsTable">
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading activity…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  async function loadDashboard() {
+    try {
+      const res = await fetch('/api/admin/dashboard-stats');
+      if (res.status === 401 || res.status === 403) {
+        window.location.href = '/admin/login';
+        return;
+      }
+      const data = await res.json();
+
+      // Summary statistics
+      document.getElementById('statUsers').textContent = data.total_users ?? 0;
+      document.getElementById('statAnalyses').textContent = data.total_analyses ?? 0;
+      document.getElementById('statReports').textContent = data.total_reports ?? 0;
+      document.getElementById('statDamaged').textContent = data.total_damaged ?? 0;
+
+      // Severity counts
+      const sev = data.severity || {};
+      document.getElementById('sevMinor').textContent = sev['Minor'] ?? 0;
+      document.getElementById('sevModerate').textContent = sev['Moderate'] ?? 0;
+      document.getElementById('sevSevere').textContent = sev['Severe'] ?? 0;
+      document.getElementById('sevNone').textContent = sev['None'] ?? 0;
+
+      // Recent analyses table
+      const tbodyAnalyses = document.getElementById('recentAnalysesTable');
+      if (data.recent_analyses && data.recent_analyses.length > 0) {
+        tbodyAnalyses.innerHTML = data.recent_analyses.map(r => `
+          <tr>
+            <td><strong>${esc(r.report_id)}</strong></td>
+            <td>${esc(r.user_full_name || '-')}</td>
+            <td>${esc(r.user_email || '-')}</td>
+            <td>${esc(r.vehicle_type || 'Vehicle')}</td>
+            <td>${r.damage_detected === 'Yes' ? '<span style="color: var(--accent-red); font-weight: 600;">Yes</span>' : '<span style="color: var(--accent-green);">No</span>'}</td>
+            <td>${severityBadge(r.severity)}</td>
+            <td>${esc(r.cost_range || '₹0')}</td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">${esc(r.timestamp)}</td>
+            <td><a href="/admin/reports/${encodeURIComponent(r.report_id)}" class="btn btn-outline btn-sm">View Report</a></td>
+          </tr>
+        `).join('');
+      } else {
+        tbodyAnalyses.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">No vehicle analyses have been performed yet.</td></tr>';
+      }
+
+      // Recent users table
+      const tbodyUsers = document.getElementById('recentUsersTable');
+      if (data.recent_users && data.recent_users.length > 0) {
+        tbodyUsers.innerHTML = data.recent_users.map(u => `
+          <tr>
+            <td><strong>${esc(u.full_name || u.username)}</strong><br><small style="color: var(--text-dim);">@${esc(u.username)}</small></td>
+            <td style="font-size: 0.85rem;">${esc(u.email)}</td>
+            <td style="color: var(--text-muted); font-size: 0.82rem;">${esc(u.created_at)}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbodyUsers.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No registered users yet.</td></tr>';
+      }
+
+      // Recent logins table
+      const tbodyLogins = document.getElementById('recentLoginsTable');
+      if (data.recent_logins && data.recent_logins.length > 0) {
+        tbodyLogins.innerHTML = data.recent_logins.map(l => `
+          <tr>
+            <td style="font-size: 0.85rem;"><strong>${esc(l.username_or_email)}</strong></td>
+            <td><span class="badge ${l.role === 'admin' ? 'badge-admin' : 'badge-user'}">${esc(l.role || 'user')}</span></td>
+            <td><span class="badge ${l.outcome === 'success' ? 'badge-success' : 'badge-failed'}">${esc(l.outcome)}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.82rem;">${esc(l.timestamp)}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbodyLogins.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No login activity recorded yet.</td></tr>';
+      }
+    } catch (e) {
+      toast('Failed to load dashboard statistics: ' + e.message, 'error');
+    }
+  }
+
+  loadDashboard();
+</script>
+{% endblock %}

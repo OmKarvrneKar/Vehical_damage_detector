@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block title %}Profile{% endblock %}
+{% block body %}
+<section class="panel"><h2>Your profile</h2>
+  <dl class="facts" id="info"></dl></section>
+<section class="panel"><h2>Login history</h2>
+  <div class="tablewrap"><table><thead><tr><th>Login time</th><th>IP address</th></tr></thead><tbody id="logins"></tbody></table></div></section>
+{% endblock %}
+{% block script %}<script>
+fetch('/api/profile').then(r => r.json()).then(d => {
+  const u = d.user;
+  document.getElementById('info').innerHTML = [['User ID', u.user_id], ['Username', u.username], ['Full name', u.full_name || '-'],
+    ['Email', u.email || '-'], ['Member since', u.created], ['Reports', d.reports]].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  document.getElementById('logins').innerHTML = d.logins.map(l => `<tr><td>${l['Login Time']}</td><td>${l['IP Address'] || '-'}</td></tr>`).join('');
+});
+</script>{% endblock %}

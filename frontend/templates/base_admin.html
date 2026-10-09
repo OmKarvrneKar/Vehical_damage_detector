@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}{% endblock %} – Admin Portal | Vehicle Damage Detection</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-title">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 10.9 2 11.2 2 11.5V16c0 .6.4 1 1 1h2"/>
+            <circle cx="7" cy="17" r="2"/>
+            <path d="M9 17h6"/>
+            <circle cx="17" cy="17" r="2"/>
+          </svg>
+          Vehicle AI
+        </div>
+        <span class="brand-badge badge-admin">Admin Portal</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_dashboard_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_dashboard_page' }}">
+          <span>📊</span> Dashboard
+        </a>
+        <a href="{{ url_for('admin_analyze_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_analyze_page' }}">
+          <span>🔍</span> Analyze Vehicle
+        </a>
+        <a href="{{ url_for('admin_users_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_users_page' }}">
+          <span>👥</span> User Management
+        </a>
+        <a href="{{ url_for('admin_login_activity_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_login_activity_page' }}">
+          <span>🕒</span> Login Activity
+        </a>
+        <a href="{{ url_for('admin_reports_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_reports_page' }}">
+          <span>📋</span> All Damage Reports
+        </a>
+        <a href="{{ url_for('admin_analytics_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_analytics_page' }}">
+          <span>📈</span> Analytics
+        </a>
+        <a href="{{ url_for('admin_download_excel_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_download_excel_page' }}">
+          <span>📥</span> Download Excel
+        </a>
+        <a href="{{ url_for('admin_profile_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_profile_page' }}">
+          <span>⚙️</span> Admin Profile
+        </a>
+        <a href="{{ url_for('auth.logout') }}" class="nav-item" style="color: var(--accent-red); margin-top: auto;">
+          <span>🚪</span> Sign Out
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-pill">
+          <div class="user-avatar">{{ (user or 'A')[0] | upper }}</div>
+          <div class="user-info-text">
+            <span class="user-info-name">{{ user or 'Administrator' }}</span>
+            <span class="user-info-role">Admin</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      {% block body %}{% endblock %}
+    </main>
+  </div>
+
+  <div id="toastContainer"></div>
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  {% block script %}{% endblock %}
+</body>
+</html>

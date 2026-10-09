@@ -1,0 +1,55 @@
+{% extends "base.html" %}{% block title %}Analyse{% endblock %}
+{% block body %}
+<section class="panel" id="inputPanel">
+  <h2>Image input</h2>
+  <div class="row">
+    <div>
+      <label>Image location <small>(folder path on this computer)</small>
+        <div class="inline"><input id="folder" placeholder="C:\Users\You\Desktop\Vehicle">
+        <button class="btn ghost sm" type="button" id="browse">Browse</button></div></label>
+      <label style="margin-top:.8rem">Image name <small>(for example vehicle1.jpg)</small>
+        <input id="name" placeholder="vehicle1.jpg"></label>
+      <p class="muted">Browse picks a file from your computer. Or type a folder path and image name instead.</p>
+    </div>
+    <div>
+      <label class="drop" id="drop" tabindex="0">
+        <input type="file" id="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
+        <img id="preview" alt="" hidden>
+        <span id="dropText">Drop a JPG or PNG here</span>
+      </label>
+      <button class="btn ghost sm" type="button" id="camBtn">Use camera</button>
+    </div>
+  </div>
+  <div class="cam" id="cam" hidden><video id="video" autoplay playsinline muted></video>
+    <div class="actions"><button class="btn blue" id="snap" type="button">Take snapshot</button>
+    <button class="btn ghost sm" id="camOff" type="button">Close camera</button></div></div>
+  <p class="alert" id="err" role="alert" hidden></p>
+  <button class="btn green" id="go">Analyse image</button>
+</section>
+
+<section class="panel" id="report" hidden>
+  <div class="report-head"><div><h2 id="rTitle"></h2><p class="muted" id="rMeta"></p></div><span class="sev" id="rSev"></span></div>
+  <p class="warn" id="warn" hidden></p>
+  <h3>Image preprocessing</h3><div class="steps" id="steps"></div>
+  <div class="grid2" style="margin-top:1.2rem">
+    <figure><img id="rImg" alt="Vehicle with detected damage outlined"><figcaption class="muted">Detected areas are outlined</figcaption></figure>
+    <div>
+      <div class="result"><h3>Analysis result</h3><dl class="facts" id="facts"></dl></div>
+      <div class="cost" style="margin-top:1rem"><span class="muted">Estimated repair cost</span><strong id="rCost"></strong><small id="rSplit"></small></div>
+    </div>
+  </div>
+  <p class="ok">Analysis completed successfully. Saved to Excel.</p>
+  <h3>Damage found</h3><div id="dmg"></div>
+  <h3>Parts &amp; price comparison</h3><div id="parts"></div>
+  <h3>Repair recommendation</h3><p id="rec" class="rec"></p>
+  <details><summary>How this was processed</summary><ol id="stages" class="stages"></ol></details>
+  <div class="actions"><button class="btn blue" id="again">New analysis</button>
+    <button class="btn ghost" onclick="window.print()">Print report</button>
+    <a class="btn ghost" href="/logout">Exit</a></div>
+</section>
+
+<section class="panel"><h2>Past reports</h2>
+  <div class="tablewrap"><table><thead><tr><th>Report</th><th>Date</th><th>Image</th><th>Vehicle</th><th>Damage</th><th>Severity</th><th>Confidence</th><th>Cost</th><th>Status</th></tr></thead>
+  <tbody id="hist"><tr><td colspan="9" class="muted">Loading…</td></tr></tbody></table></div></section>
+{% endblock %}
+{% block script %}<script src="{{ url_for('static', filename='js/app.js') }}"></script>{% endblock %}

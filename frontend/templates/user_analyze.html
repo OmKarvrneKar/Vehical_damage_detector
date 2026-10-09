@@ -1,0 +1,330 @@
+{% extends "base_user.html" %}
+{% block title %}Temporary Vehicle Analysis{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Temporary Vehicle Analysis</h1>
+    <p class="page-subtitle">Perform an instant AI scan of your vehicle for personal preview and cost estimation</p>
+  </div>
+</div>
+
+<div class="alert alert-warning" style="margin-bottom: 1.5rem;">
+  <span>⚠️</span>
+  <div>
+    <strong>Temporary Diagnostic Evaluation:</strong> User-uploaded analyses are for private informational preview only.
+    They are <strong>not stored</strong> in your official vehicle inspection history, not shared with inspectors, and not included in official certified reports.
+  </div>
+</div>
+
+<!-- Upload Card -->
+<div class="card" id="userScanSection">
+  <div class="card-title">
+    <span>Upload Vehicle Photo</span>
+  </div>
+
+  <div class="upload-grid">
+    <div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem;">
+        Capture or upload a clear photo of your car (exterior body, bumper, door panel, glass, etc.). The computer vision pipeline will isolate the vehicle, scan for dents, cracks, or scratches, and estimate repair expenses.
+      </p>
+
+      <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-dim);">
+        <p><strong>Supported formats:</strong> JPG, JPEG, PNG (max 10MB)</p>
+        <p style="margin-top: 0.25rem;">For best results, photograph in good lighting from 2–3 meters away.</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="dropzone" id="userDropzone" tabindex="0">
+        <input type="file" id="userFileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
+        <img id="userPreviewImg" alt="Selected photo preview" style="display: none;">
+        <div id="userDropPrompt" style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 2.2rem;">📷</span>
+          <strong style="color: var(--text-main);">Drop vehicle photo here</strong>
+          <span style="font-size: 0.82rem; color: var(--text-dim);">or click to browse files</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
+        <button type="button" class="btn btn-outline btn-sm" id="btnUserCam">
+          <span>📹</span> Use Camera
+        </button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnUserClearFile" style="display: none;">
+          <span>✕</span> Clear Photo
+        </button>
+      </div>
+
+      <div class="camera-box" id="userCamBox" style="display: none;">
+        <video id="userCamVideo" autoplay playsinline muted></video>
+        <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
+          <button type="button" class="btn btn-primary btn-sm" id="btnUserSnap">Take Snapshot</button>
+          <button type="button" class="btn btn-outline btn-sm" id="btnUserCloseCam">Close Camera</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="userAlert" class="alert alert-error" style="display: none; margin-top: 1.5rem;"></div>
+
+  <div style="margin-top: 1.75rem; display: flex; align-items: center; gap: 1rem;">
+    <button type="button" id="btnRunUserScan" class="btn btn-primary" style="padding: 0.85rem 2rem; font-size: 1rem;">
+      <span>⚡</span> Run Temporary Diagnostic
+    </button>
+    <span id="userScanStatus" style="font-size: 0.9rem; color: var(--text-muted); display: none;">Analyzing vehicle…</span>
+  </div>
+</div>
+
+<!-- Temporary Results Card -->
+<div class="card" id="userResultSection" style="display: none;">
+  <div class="result-header">
+    <div>
+      <h2 style="font-size: 1.5rem; color: #fff;" id="uResTitle">Diagnostic Result</h2>
+      <p style="color: var(--text-muted); font-size: 0.85rem;">Temporary Session Evaluation · Not an official report</p>
+    </div>
+    <div>
+      <span id="uResSeverity"></span>
+    </div>
+  </div>
+
+  <div id="uEngineNotice" class="alert alert-warning" style="display: none;"></div>
+
+  <!-- Preprocessing Stages -->
+  <h3 style="font-size: 1rem; color: #fff; margin-bottom: 0.75rem;">Image Processing Stages</h3>
+  <div class="preprocessing-steps" id="uSteps"></div>
+
+  <!-- Annotated Image & Facts -->
+  <div class="analysis-layout">
+    <div class="annotated-box">
+      <h3 style="font-size: 1rem; color: #fff; margin-bottom: 0.75rem;">Detected Damage Overlays</h3>
+      <img id="uAnnotatedImg" alt="Vehicle with damage overlays">
+    </div>
+
+    <div>
+      <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+        <h3 style="font-size: 1rem; color: #fff; margin-bottom: 0.85rem;">Diagnostic Summary</h3>
+        <dl class="facts-list" id="uFacts"></dl>
+      </div>
+
+      <div class="cost-card">
+        <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">Estimated Repair Budget</span>
+        <div class="cost-total" id="uCostTotal">-</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted);" id="uCostSplit">-</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parts Breakdown -->
+  <div style="margin-bottom: 2rem;">
+    <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 0.75rem;">Component Quotes &amp; Recommendations</h3>
+    <div id="uPartsList"></div>
+  </div>
+
+  <div style="background: rgba(245, 158, 11, 0.08); border-left: 4px solid var(--accent-amber); padding: 1.2rem; border-radius: var(--radius-sm); margin-bottom: 2rem;">
+    <h4 style="color: var(--accent-amber); margin-bottom: 0.35rem; font-size: 0.95rem;">Repair Recommendation</h4>
+    <p id="uRecText" style="color: var(--text-main); font-size: 0.95rem;"></p>
+  </div>
+
+  <div style="display: flex; gap: 0.75rem;">
+    <button type="button" class="btn btn-outline" id="btnClearUserScan">Clear &amp; Discard Result</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  let uFile = null;
+  let uStream = null;
+
+  function pickUserFile(f) {
+    if (!f) return;
+    if (!/\.(jpe?g|png)$/i.test(f.name)) {
+      showUError('Only JPG, JPEG, or PNG images are supported.');
+      return;
+    }
+    uFile = f;
+    clearUError();
+    document.getElementById('userPreviewImg').src = URL.createObjectURL(f);
+    document.getElementById('userPreviewImg').style.display = 'block';
+    document.getElementById('userDropPrompt').style.display = 'none';
+    document.getElementById('btnUserClearFile').style.display = 'inline-flex';
+  }
+
+  const uDrop = document.getElementById('userDropzone');
+  const uFileInput = document.getElementById('userFileInput');
+
+  uDrop.onclick = () => uFileInput.click();
+  uFileInput.onchange = e => pickUserFile(e.target.files[0]);
+
+  ['dragover', 'dragenter'].forEach(ev => uDrop.addEventListener(ev, e => {
+    e.preventDefault(); uDrop.classList.add('dragover');
+  }));
+  ['dragleave', 'drop'].forEach(ev => uDrop.addEventListener(ev, e => {
+    e.preventDefault(); uDrop.classList.remove('dragover');
+  }));
+  uDrop.addEventListener('drop', e => pickUserFile(e.dataTransfer.files[0]));
+
+  document.getElementById('btnUserClearFile').onclick = () => {
+    uFile = null;
+    uFileInput.value = '';
+    document.getElementById('userPreviewImg').src = '';
+    document.getElementById('userPreviewImg').style.display = 'none';
+    document.getElementById('userDropPrompt').style.display = 'flex';
+    document.getElementById('btnUserClearFile').style.display = 'none';
+  };
+
+  // Camera
+  function stopUserCam() {
+    if (uStream) {
+      uStream.getTracks().forEach(t => t.stop());
+      uStream = null;
+    }
+    document.getElementById('userCamBox').style.display = 'none';
+  }
+
+  document.getElementById('btnUserCam').onclick = async () => {
+    try {
+      uStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      document.getElementById('userCamVideo').srcObject = uStream;
+      document.getElementById('userCamBox').style.display = 'flex';
+    } catch {
+      showUError('Could not open camera. Please check camera permissions or upload a photo.');
+    }
+  };
+
+  document.getElementById('btnUserCloseCam').onclick = stopUserCam;
+  document.getElementById('btnUserSnap').onclick = () => {
+    const video = document.getElementById('userCamVideo');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob(blob => {
+      const snap = new File([blob], `user_photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      pickUserFile(snap);
+      stopUserCam();
+    }, 'image/jpeg', 0.92);
+  };
+
+  function showUError(m) {
+    const b = document.getElementById('userAlert');
+    b.textContent = m;
+    b.style.display = 'flex';
+  }
+  function clearUError() {
+    document.getElementById('userAlert').style.display = 'none';
+  }
+
+  // Submit temporary analysis
+  document.getElementById('btnRunUserScan').onclick = async () => {
+    clearUError();
+    if (!uFile) {
+      showUError('Please upload or capture a vehicle photo first.');
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('image', uFile);
+
+    const btn = document.getElementById('btnRunUserScan');
+    const status = document.getElementById('userScanStatus');
+    btn.disabled = true;
+    btn.textContent = 'Analyzing…';
+    status.style.display = 'inline';
+
+    try {
+      const res = await fetch('/api/user/analyze-temporary', {
+        method: 'POST',
+        body: fd
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Temporary analysis failed.');
+      }
+
+      renderUserResults(data);
+    } catch (e) {
+      showUError(e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⚡ Run Temporary Diagnostic';
+      status.style.display = 'none';
+    }
+  };
+
+  function renderUserResults(r) {
+    document.getElementById('userScanSection').style.display = 'none';
+    const resSec = document.getElementById('userResultSection');
+    resSec.style.display = 'block';
+
+    document.getElementById('uResTitle').textContent = r.damaged ? 'Damage Detected' : 'No Damage Detected';
+    document.getElementById('uResSeverity').innerHTML = severityBadge(r.severity);
+
+    const wBox = document.getElementById('uEngineNotice');
+    if (r.warning) {
+      wBox.textContent = '⚠️ ' + r.warning;
+      wBox.style.display = 'flex';
+    } else {
+      wBox.style.display = 'none';
+    }
+
+    // Preprocessing steps
+    const sBox = document.getElementById('uSteps');
+    if (r.steps && r.steps.length) {
+      sBox.innerHTML = r.steps.map(s => `
+        <div class="step-card">
+          <img src="/uploads/${s.file}" alt="${esc(s.label)}">
+          <div class="step-label">${esc(s.label)}</div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('uAnnotatedImg').src = `/uploads/${r.annotated}`;
+
+    const facts = [
+      ['Vehicle Type', r.vehicle?.label || 'Sedan'],
+      ['Damage Identified', r.damaged ? 'Yes' : 'No'],
+      ['Damage Categories', r.damage_types?.join(', ') || 'None'],
+      ['Severity', r.severity || 'None'],
+      ['Confidence Metric', (r.confidence ? r.confidence + '%' : '-')],
+      ['Status', 'Temporary session evaluation only (not saved)']
+    ];
+    document.getElementById('uFacts').innerHTML = facts.map(([k, v]) => `
+      <dt>${k}</dt><dd>${esc(v)}</dd>
+    `).join('');
+
+    if (r.damaged && r.cost) {
+      document.getElementById('uCostTotal').textContent = `${inr(r.cost.min)} – ${inr(r.cost.max)}`;
+      document.getElementById('uCostSplit').textContent = `Labour: ${inr(r.cost.labour)} | Parts: ${inr(r.cost.parts)}`;
+    } else {
+      document.getElementById('uCostTotal').textContent = '₹0';
+      document.getElementById('uCostSplit').textContent = 'No repair needed';
+    }
+
+    const pBox = document.getElementById('uPartsList');
+    if (r.parts && r.parts.length) {
+      pBox.innerHTML = r.parts.map(p => `
+        <div class="card" style="margin-bottom: 0.75rem; background: var(--bg-surface);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong>${esc(p.name)}</strong>
+            <span style="color: var(--text-muted); font-size: 0.85rem;">Action: ${esc(p.action)}</span>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      pBox.innerHTML = '<p style="color: var(--text-muted);">No replacement parts required.</p>';
+    }
+
+    document.getElementById('uRecText').textContent = r.recommendation || 'No repair required.';
+    resSec.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  document.getElementById('btnClearUserScan').onclick = () => {
+    document.getElementById('userResultSection').style.display = 'none';
+    document.getElementById('userScanSection').style.display = 'block';
+    document.getElementById('btnUserClearFile').click();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+</script>
+{% endblock %}

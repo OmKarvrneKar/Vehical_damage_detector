@@ -1,0 +1,124 @@
+{% extends "base_admin.html" %}
+{% block title %}Login Activity Audit{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Login Activity &amp; Authentication Audit</h1>
+    <p class="page-subtitle">Complete chronological record of all successful and failed authentication attempts</p>
+  </div>
+</div>
+
+<div class="card">
+  <!-- Search & Filters -->
+  <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;" id="filterBar">
+    <div>
+      <input type="text" id="logSearch" class="form-control" placeholder="Search by username or email…">
+    </div>
+    <div>
+      <select id="roleFilter" class="form-control">
+        <option value="all">All Roles</option>
+        <option value="admin">Admin</option>
+        <option value="user">User</option>
+      </select>
+    </div>
+    <div>
+      <select id="eventFilter" class="form-control">
+        <option value="all">All Event Types</option>
+        <option value="login">Login</option>
+        <option value="failed_login">Failed Login</option>
+        <option value="logout">Logout</option>
+        <option value="register">Registration</option>
+      </select>
+    </div>
+    <div>
+      <select id="outcomeFilter" class="form-control">
+        <option value="all">All Outcomes</option>
+        <option value="success">Success</option>
+        <option value="failed">Failed</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Event #</th>
+          <th>Account / Identifier</th>
+          <th>Full Name</th>
+          <th>Role</th>
+          <th>Event Type</th>
+          <th>Outcome</th>
+          <th>Timestamp</th>
+          <th>Client IP</th>
+          <th>User Agent / Browser</th>
+        </tr>
+      </thead>
+      <tbody id="logsTableBody">
+        <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading login activity audit logs…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  async function loadLogs() {
+    const q = document.getElementById('logSearch').value.trim();
+    const role = document.getElementById('roleFilter').value;
+    const evt = document.getElementById('eventFilter').value;
+    const outcome = document.getElementById('outcomeFilter').value;
+
+    const url = `/api/admin/login-history?search=${encodeURIComponent(q)}&role=${encodeURIComponent(role)}&event_type=${encodeURIComponent(evt)}&outcome=${encodeURIComponent(outcome)}`;
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      renderLogs(data.history || []);
+    } catch (e) {
+      toast('Failed to load login audit logs', 'error');
+    }
+  }
+
+  function renderLogs(logs) {
+    const tbody = document.getElementById('logsTableBody');
+    if (!logs || logs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">No matching login activity records found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = logs.map(l => `
+      <tr>
+        <td><span style="color: var(--text-dim); font-size: 0.85rem;">#${l.event_id}</span></td>
+        <td><strong>${esc(l.username_or_email || '-')}</strong></td>
+        <td>${esc(l.full_name || '-')}</td>
+        <td><span class="badge ${l.role === 'admin' ? 'badge-admin' : 'badge-user'}">${esc(l.role || 'unknown')}</span></td>
+        <td><span style="font-weight: 500;">${esc(l.event_type)}</span></td>
+        <td>
+          <span class="badge ${l.outcome === 'success' ? 'badge-success' : 'badge-failed'}">
+            ${esc(l.outcome)}
+          </span>
+        </td>
+        <td style="color: var(--text-muted); font-size: 0.82rem; white-space: nowrap;">${esc(l.timestamp)}</td>
+        <td style="font-family: monospace; font-size: 0.82rem;">${esc(l.ip_address || '-')}</td>
+        <td style="font-size: 0.78rem; color: var(--text-muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${esc(l.user_agent)}">
+          ${esc(l.user_agent || '-')}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  let logDebounce;
+  document.getElementById('logSearch').oninput = () => {
+    clearTimeout(logDebounce);
+    logDebounce = setTimeout(loadLogs, 250);
+  };
+  document.getElementById('roleFilter').onchange = loadLogs;
+  document.getElementById('eventFilter').onchange = loadLogs;
+  document.getElementById('outcomeFilter').onchange = loadLogs;
+
+  loadLogs();
+</script>
+{% endblock %}

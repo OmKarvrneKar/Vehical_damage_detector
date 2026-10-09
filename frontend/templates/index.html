@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI-Based Vehicle Damage Detection System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="background: radial-gradient(circle at 50% 20%, #1e293b 0%, #0b1120 75%); min-height: 100vh;">
+  <div class="landing-hero">
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+      <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="#f59e0b" stroke-width="2">
+        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 10.9 2 11.2 2 11.5V16c0 .6.4 1 1 1h2"/>
+        <circle cx="7" cy="17" r="2"/>
+        <path d="M9 17h6"/>
+        <circle cx="17" cy="17" r="2"/>
+      </svg>
+      <span style="font-size: 1.4rem; font-weight: 800; color: #fff; letter-spacing: -0.01em;">VehicleDamage.AI</span>
+    </div>
+
+    <h1 class="landing-title">Automated AI Vehicle Inspection & Damage Assessment</h1>
+    <p class="landing-desc">
+      Enterprise Computer Vision platform utilizing deep learning and OpenCV pipelines to detect structural damage, assess severity, calculate repair cost breakdowns, and manage owner reports.
+    </p>
+
+    <div class="portal-grid">
+      <!-- Admin Portal Card -->
+      <div class="portal-card">
+        <div class="portal-icon portal-admin-icon">🛡️</div>
+        <span class="brand-badge badge-admin" style="margin-bottom: 0.75rem;">Inspectors &amp; Admins</span>
+        <h3>Administrator Portal</h3>
+        <p>
+          Execute official AI damage analyses for registered vehicle owners, manage accounts, review detailed login audits, track global severity analytics, and export verified Excel reports.
+        </p>
+        <a href="{{ url_for('admin_login_page') }}" class="btn btn-accent" style="width: 100%; margin-top: auto;">
+          Enter Admin Portal →
+        </a>
+      </div>
+
+      <!-- User Portal Card -->
+      <div class="portal-card">
+        <div class="portal-icon portal-user-icon">🚗</div>
+        <span class="brand-badge badge-user" style="margin-bottom: 0.75rem;">Vehicle Owners</span>
+        <h3>Customer / User Portal</h3>
+        <p>
+          View official inspection reports generated for your vehicle, review part replacement estimates, track repair status, or run quick temporary damage diagnostic scans.
+        </p>
+        <div style="display: flex; gap: 0.75rem; margin-top: auto;">
+          <a href="{{ url_for('user_login_page') }}" class="btn btn-primary" style="flex: 1;">
+            Sign In
+          </a>
+          <a href="{{ url_for('user_register_page') }}" class="btn btn-outline" style="flex: 1;">
+            Create Account
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 3.5rem; display: flex; gap: 2rem; color: var(--text-dim); font-size: 0.85rem; flex-wrap: wrap; justify-content: center;">
+      <span>✓ Computer Vision Detection</span>
+      <span>✓ Automated Severity Grading</span>
+      <span>✓ Cost &amp; Parts Estimation</span>
+      <span>✓ Separate Role-Based Portals</span>
+      <span>✓ Admin Audit &amp; Excel Export</span>
+    </div>
+  </div>
+</body>
+</html>
