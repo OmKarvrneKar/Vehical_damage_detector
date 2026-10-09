@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Admin Login – Vehicle Damage Detection System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div style="width: 48px; height: 48px; margin: 0 auto 1rem; border-radius: 12px; background: rgba(245, 158, 11, 0.15); display: grid; place-items: center; font-size: 1.5rem; color: var(--accent-amber);">
+          🛡️
+        </div>
+        <h2>Administrator Sign In</h2>
+        <p>Restricted access for inspection staff and system admins</p>
+      </div>
+
+      <div id="alertBox" class="alert alert-error" style="display: none;"></div>
+
+      <form id="adminLoginForm">
+        <div class="form-group">
+          <label class="form-label" for="adminEmail">Admin Email</label>
+          <input type="email" id="adminEmail" class="form-control" placeholder="admin@Samrat.com" required autocomplete="email" autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="adminPassword">Password</label>
+          <input type="password" id="adminPassword" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn btn-accent" style="width: 100%; margin-top: 0.5rem;">
+          Authenticate as Admin
+        </button>
+      </form>
+
+      <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted); text-align: center;">
+        <p>Development default credentials: <br><strong style="color: var(--accent-amber);">admin@Samrat.com</strong> / <strong style="color: var(--accent-amber);">Samrat@2026</strong></p>
+        <p style="margin-top: 0.75rem;">
+          <a href="{{ url_for('home_page') }}" style="color: var(--text-muted); text-decoration: none;">← Return to portal selector</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script>
+    const form = document.getElementById('adminLoginForm');
+    const alertBox = document.getElementById('alertBox');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      alertBox.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Authenticating…';
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('adminEmail').value.trim(),
+            password: document.getElementById('adminPassword').value
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          window.location.href = data.redirect || '/admin/dashboard';
+        } else {
+          alertBox.textContent = data.error || 'Authentication failed. Please check your credentials.';
+          alertBox.style.display = 'flex';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Authenticate as Admin';
+        }
+      } catch (err) {
+        alertBox.textContent = 'Server connection error. Please try again.';
+        alertBox.style.display = 'flex';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Authenticate as Admin';
+      }
+    };
+  </script>
+</body>
+</html>

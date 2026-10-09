@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest / Test Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Runtime uploads (preserve folder structure via .gitkeep)
+uploads/*
+!uploads/.gitkeep
+!uploads/temp/
+uploads/temp/*
+!uploads/temp/.gitkeep
+
+# Database journal files
+*.db-journal

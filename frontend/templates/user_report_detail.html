@@ -1,0 +1,93 @@
+{% extends "base_user.html" %}
+{% block title %}Report {{ report.report_id }}{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.35rem;">
+      <a href="{{ url_for('user_reports_page') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">← Back to My Reports</a>
+      <span style="color: var(--text-dim);">/</span>
+      <span style="color: var(--accent-cyan); font-weight: 600;">Report {{ report.report_id }}</span>
+    </div>
+    <h1 class="page-title">Vehicle Assessment: {{ report.report_id }}</h1>
+    <p class="page-subtitle">Official inspection performed on {{ report.timestamp }}</p>
+  </div>
+  <div>
+    <button type="button" class="btn btn-outline" onclick="window.print()">
+      <span>🖨️</span> Print Report
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="result-header">
+    <div>
+      <h2 style="font-size: 1.4rem; color: #fff;">
+        {{ 'Damage Identified on Vehicle' if report.damage_detected == 'Yes' else 'No Visible Damage Detected' }}
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.85rem;">
+        Inspection ID: {{ report.report_id }} · Vehicle: {{ report.vehicle_type }} · Method: {{ report.detection_method }}
+      </p>
+    </div>
+    <div>
+      <span class="badge {{ 'badge-minor' if report.severity == 'Minor' else 'badge-moderate' if report.severity == 'Moderate' else 'badge-severe' if report.severity == 'Severe' else 'badge-none' }}" style="font-size: 0.9rem; padding: 0.4rem 1rem;">
+        Severity: {{ report.severity }}
+      </span>
+    </div>
+  </div>
+
+  <div class="analysis-layout">
+    <div class="annotated-box">
+      <h3 style="font-size: 1rem; color: #fff; margin-bottom: 0.75rem;">Annotated Inspection Image</h3>
+      {% if report.annotated_image %}
+        <img src="/uploads/{{ report.annotated_image }}" alt="Annotated vehicle damage">
+      {% else %}
+        <div style="padding: 3rem; text-align: center; background: var(--bg-surface); border-radius: var(--radius-md); color: var(--text-muted);">
+          No image file available.
+        </div>
+      {% endif %}
+    </div>
+
+    <div>
+      <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+        <h3 style="font-size: 1rem; color: #fff; margin-bottom: 0.85rem;">Damage Summary</h3>
+        <dl class="facts-list">
+          <dt>Vehicle Type</dt><dd>{{ report.vehicle_type }}</dd>
+          <dt>Damage Detected</dt><dd>{{ report.damage_detected }}</dd>
+          <dt>Damage Categories</dt><dd>{{ report.damage_types }}</dd>
+          <dt>Severity Level</dt><dd>{{ report.severity }}</dd>
+          <dt>Inspection Confidence</dt><dd>{{ report.confidence }}%</dd>
+          <dt>Inspection Engine</dt><dd>{{ report.detection_method }}</dd>
+        </dl>
+      </div>
+
+      <div class="cost-card">
+        <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">Estimated Repair Cost Range</span>
+        <div class="cost-total">{{ report.cost_range }}</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          {% if report.damage_detected == 'Yes' %}
+            Labour: ₹{{ "{:,}".format(report.labour_cost or 0) }} | Parts: ₹{{ "{:,}".format(report.parts_cost or 0) }}
+          {% else %}
+            Vehicle in good condition.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 2rem;">
+    <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 0.75rem;">Damaged Parts &amp; Repair Guidance</h3>
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+      <p style="margin-bottom: 0.75rem;"><strong>Identified Parts:</strong> {{ report.parts_needed }}</p>
+      <div style="background: rgba(245, 158, 11, 0.08); border-left: 4px solid var(--accent-amber); padding: 1rem; border-radius: var(--radius-sm);">
+        <strong style="color: var(--accent-amber); display: block; margin-bottom: 0.25rem;">Certified Recommendation:</strong>
+        <p style="color: var(--text-main); font-size: 0.95rem;">{{ report.repair_recommendation }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 0.75rem;">
+    <a href="{{ url_for('user_reports_page') }}" class="btn btn-outline">← Back to My Reports</a>
+  </div>
+</div>
+{% endblock %}

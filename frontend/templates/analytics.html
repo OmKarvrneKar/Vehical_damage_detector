@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% block title %}Analytics{% endblock %}
+{% block body %}
+<section class="panel"><h2>Damage analytics</h2>
+  <div class="tiles" id="tiles"></div>
+  <p class="muted" id="empty" hidden>No reports yet. Analyse a vehicle photo and your charts will appear here.</p>
+  <div class="charts" id="charts" hidden>
+    <img src="/api/analytics/chart/types.png" alt="Bar chart of damage type frequency">
+    <img src="/api/analytics/chart/severity.png" alt="Donut chart of severity split">
+    <img class="wide" src="/api/analytics/chart/trend.png" alt="Stacked bars of reports per day by severity">
+  </div>
+</section>
+{% endblock %}
+{% block script %}<script>
+fetch('/api/analytics/summary').then(r => r.json()).then(s => {
+  const t = [['Reports', s.total], ['With damage', s.damaged], ['Most common', s.top_type],
+    ['Avg. confidence', s.avg_confidence + '%'], ['Avg. max cost', '₹' + s.avg_cost.toLocaleString('en-IN')]];
+  document.getElementById('tiles').innerHTML = t.map(([k, v]) => `<div class="tile"><span class="muted">${k}</span><b>${v}</b></div>`).join('');
+  document.getElementById(s.total ? 'charts' : 'empty').hidden = false;
+});
+</script>{% endblock %}

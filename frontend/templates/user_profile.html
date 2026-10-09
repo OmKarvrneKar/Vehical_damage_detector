@@ -1,0 +1,82 @@
+{% extends "base_user.html" %}
+{% block title %}My Profile{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">My Profile &amp; Account</h1>
+    <p class="page-subtitle">Your vehicle owner account details and security login history</p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-title">
+    <span>Profile Information</span>
+  </div>
+  <dl class="facts-list" id="userProfileFacts">
+    <dt>Full Name</dt><dd id="uFullName">-</dd>
+    <dt>Username</dt><dd id="uUsername">-</dd>
+    <dt>Email Address</dt><dd id="uEmail">-</dd>
+    <dt>Account Role</dt><dd><span class="badge badge-user">Vehicle Owner</span></dd>
+    <dt>Member Since</dt><dd id="uMemberSince">-</dd>
+    <dt>Official Reports</dt><dd id="uReportsCount">-</dd>
+  </dl>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    <span>My Login History</span>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Outcome</th>
+          <th>Date &amp; Time</th>
+          <th>IP Address</th>
+        </tr>
+      </thead>
+      <tbody id="userLoginsTableBody">
+        <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading your login history…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  async function loadUserProfile() {
+    try {
+      const res = await fetch('/api/user/profile');
+      const data = await res.json();
+      const u = data.user;
+
+      document.getElementById('uFullName').textContent = u.full_name || '-';
+      document.getElementById('uUsername').textContent = '@' + u.username;
+      document.getElementById('uEmail').textContent = u.email;
+      document.getElementById('uMemberSince').textContent = u.created_at;
+      document.getElementById('uReportsCount').textContent = data.total_reports ?? 0;
+
+      const tbody = document.getElementById('userLoginsTableBody');
+      if (data.logins && data.logins.length) {
+        tbody.innerHTML = data.logins.map(l => `
+          <tr>
+            <td>Account ${esc(l.event_type)}</td>
+            <td><span class="badge ${l.outcome === 'success' ? 'badge-success' : 'badge-failed'}">${esc(l.outcome)}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">${esc(l.timestamp)}</td>
+            <td style="font-family: monospace; font-size: 0.85rem;">${esc(l.ip_address || '-')}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No recent logins recorded.</td></tr>';
+      }
+    } catch (e) {
+      toast('Failed to load profile details: ' + e.message, 'error');
+    }
+  }
+
+  loadUserProfile();
+</script>
+{% endblock %}

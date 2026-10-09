@@ -1,0 +1,210 @@
+{% extends "base_admin.html" %}
+{% block title %}User Management{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">User Management</h1>
+    <p class="page-subtitle">View and inspect registered vehicle owners and accounts</p>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 250px;">
+      <input type="text" id="userSearch" class="form-control" placeholder="Search by name, username, or email…">
+    </div>
+    <div style="width: 180px;">
+      <select id="roleFilter" class="form-control">
+        <option value="">All Roles</option>
+        <option value="user" selected>Vehicle Owners (User)</option>
+        <option value="admin">Administrators</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>User ID</th>
+          <th>Full Name</th>
+          <th>Username</th>
+          <th>Email Address</th>
+          <th>Role</th>
+          <th>Created</th>
+          <th>Last Login</th>
+          <th>Reports</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="usersTableBody">
+        <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading registered users…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- User Detail Modal -->
+<div id="userDetailModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 999; display: none; align-items: center; justify-content: center; padding: 1.5rem;">
+  <div class="card" style="width: min(800px, 100%); max-height: 90vh; overflow-y: auto; background: var(--bg-surface); margin: 0;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
+      <div>
+        <h2 style="font-size: 1.35rem; color: #fff;" id="modalUserName">User Details</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;" id="modalUserMeta"></p>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" id="btnCloseModal">✕ Close</button>
+    </div>
+
+    <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+      <a href="#" id="modalAnalyzeBtn" class="btn btn-accent btn-sm">
+        <span>🔍</span> Analyze Vehicle for this User
+      </a>
+    </div>
+
+    <!-- Official Reports List -->
+    <h3 style="font-size: 1.05rem; color: #fff; margin-bottom: 0.75rem;">Official Damage Reports</h3>
+    <div class="table-container" style="margin-bottom: 1.5rem;">
+      <table>
+        <thead>
+          <tr>
+            <th>Report ID</th>
+            <th>Date</th>
+            <th>Vehicle</th>
+            <th>Severity</th>
+            <th>Cost</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="modalReportsTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Login Activity -->
+    <h3 style="font-size: 1.05rem; color: #fff; margin-bottom: 0.75rem;">Recent Account Login Activity</h3>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Outcome</th>
+            <th>Timestamp</th>
+            <th>IP Address</th>
+          </tr>
+        </thead>
+        <tbody id="modalLoginsTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  let allUsers = [];
+
+  async function fetchUsers() {
+    const q = document.getElementById('userSearch').value.trim();
+    const role = document.getElementById('roleFilter').value;
+    const url = `/api/admin/users?search=${encodeURIComponent(q)}&role=${encodeURIComponent(role)}`;
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      allUsers = data.users || [];
+      renderUsers(allUsers);
+    } catch (e) {
+      toast('Failed to load user list', 'error');
+    }
+  }
+
+  function renderUsers(users) {
+    const tbody = document.getElementById('usersTableBody');
+    if (!users || users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">No matching accounts found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td><strong>#${u.user_id}</strong></td>
+        <td><strong>${esc(u.full_name || '-')}</strong></td>
+        <td><span style="color: var(--accent-amber);">@${esc(u.username)}</span></td>
+        <td style="font-size: 0.88rem;">${esc(u.email)}</td>
+        <td><span class="badge ${u.role === 'admin' ? 'badge-admin' : 'badge-user'}">${esc(u.role)}</span></td>
+        <td style="color: var(--text-muted); font-size: 0.82rem;">${esc(u.created_at)}</td>
+        <td style="color: var(--text-muted); font-size: 0.82rem;">${esc(u.last_login_at || 'Never')}</td>
+        <td><span class="badge badge-none">${u.total_reports || 0}</span></td>
+        <td style="white-space: nowrap;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="viewUserModal(${u.user_id})">Details</button>
+          ${u.role === 'user' ? `<a href="/admin/analyze?user_id=${u.user_id}" class="btn btn-accent btn-sm" style="margin-left: 0.35rem;">Analyze</a>` : ''}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  let debounceTimer;
+  document.getElementById('userSearch').oninput = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(fetchUsers, 250);
+  };
+  document.getElementById('roleFilter').onchange = fetchUsers;
+
+  // User detail modal
+  async function viewUserModal(userId) {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`);
+      if (!res.ok) throw new Error('User not found');
+      const data = await res.json();
+      const u = data.user;
+
+      document.getElementById('modalUserName').textContent = `${u.full_name || u.username} (#${u.user_id})`;
+      document.getElementById('modalUserMeta').textContent = `Email: ${u.email} · Username: @${u.username} · Role: ${u.role} · Member Since: ${u.created_at}`;
+      document.getElementById('modalAnalyzeBtn').href = `/admin/analyze?user_id=${u.user_id}`;
+
+      // Reports table
+      const rTbody = document.getElementById('modalReportsTable');
+      if (data.reports && data.reports.length) {
+        rTbody.innerHTML = data.reports.map(r => `
+          <tr>
+            <td><strong>${esc(r.report_id)}</strong></td>
+            <td style="color: var(--text-muted); font-size: 0.82rem;">${esc(r.timestamp)}</td>
+            <td>${esc(r.vehicle_type || 'Vehicle')}</td>
+            <td>${severityBadge(r.severity)}</td>
+            <td>${esc(r.cost_range || '₹0')}</td>
+            <td><a href="/admin/reports/${encodeURIComponent(r.report_id)}" class="btn btn-outline btn-sm">View</a></td>
+          </tr>
+        `).join('');
+      } else {
+        rTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1rem;">No reports assigned to this user.</td></tr>';
+      }
+
+      // Logins table
+      const lTbody = document.getElementById('modalLoginsTable');
+      if (data.logins && data.logins.length) {
+        lTbody.innerHTML = data.logins.map(l => `
+          <tr>
+            <td>${esc(l.event_type)}</td>
+            <td><span class="badge ${l.outcome === 'success' ? 'badge-success' : 'badge-failed'}">${esc(l.outcome)}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.82rem;">${esc(l.timestamp)}</td>
+            <td style="font-size: 0.82rem;">${esc(l.ip_address || '-')}</td>
+          </tr>
+        `).join('');
+      } else {
+        lTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1rem;">No login activity recorded.</td></tr>';
+      }
+
+      const modal = document.getElementById('userDetailModal');
+      modal.style.display = 'flex';
+    } catch (e) {
+      toast('Failed to load user details: ' + e.message, 'error');
+    }
+  }
+
+  document.getElementById('btnCloseModal').onclick = () => {
+    document.getElementById('userDetailModal').style.display = 'none';
+  };
+
+  fetchUsers();
+</script>
+{% endblock %}

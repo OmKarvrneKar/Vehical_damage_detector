@@ -1,0 +1,62 @@
+{% extends "base_admin.html" %}
+{% block title %}Download Excel Reports{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Download Master Excel Reports</h1>
+    <p class="page-subtitle">Export official damage inspection records, user directories, and login audit logs</p>
+  </div>
+</div>
+
+<div class="card" style="max-width: 800px;">
+  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+    <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(16, 185, 129, 0.15); display: grid; place-items: center; font-size: 2rem; color: var(--accent-green);">
+      📊
+    </div>
+    <div>
+      <h2 style="font-size: 1.3rem; color: #fff;">Workbook Export: vehicle_damage_reports.xlsx</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">
+        Multi-tab Microsoft Excel (.xlsx) file with professional formatting and frozen headers.
+      </p>
+    </div>
+  </div>
+
+  <div class="alert alert-info" style="margin-bottom: 1.5rem;">
+    <span>🔒</span>
+    <div>
+      <strong>Strictly Admin-Only:</strong> Regular users are blocked from downloading this master workbook via backend role authorization (HTTP 403). Passwords and password hashes are never included in exported user data.
+    </div>
+  </div>
+
+  <h3 style="font-size: 1rem; color: #fff; margin-bottom: 0.75rem;">Workbook Sheet Structure:</h3>
+  <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem;">
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+      <strong style="color: var(--accent-amber);">1. "Reports" Sheet</strong>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+        Contains Report ID, User ID, Username, Email, Analysis Date &amp; Time, Image Filename, Damage Categories, Damage Count, Severity, Estimated Repair Cost, Labour Cost, Parts Cost, Repair Recommendation, and Detection Method.
+      </p>
+    </div>
+
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+      <strong style="color: var(--accent-cyan);">2. "Users" Sheet</strong>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+        Contains registered User IDs, Usernames, Full Names, Email Addresses, Roles, Account Creation Dates, and Last Login timestamps.
+      </p>
+    </div>
+
+    <div style="background: var(--bg-surface); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+      <strong style="color: var(--primary);">3. "LoginHistory" Sheet</strong>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+        Contains complete chronological authentication events: Event ID, Account Identifier, Role, Event Type (login/logout/failed), Outcome, Timestamp, Client IP Address, and Browser User Agent.
+      </p>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 1rem; align-items: center;">
+    <a href="/api/admin/download-excel" class="btn btn-success" style="padding: 0.85rem 2rem; font-size: 1rem;">
+      <span>📥</span> Download Excel Workbook (.xlsx)
+    </a>
+  </div>
+</div>
+{% endblock %}

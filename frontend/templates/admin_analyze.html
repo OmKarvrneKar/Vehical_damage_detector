@@ -1,0 +1,484 @@
+{% extends "base_admin.html" %}
+{% block title %}Analyze Vehicle{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Vehicle Damage Analysis</h1>
+    <p class="page-subtitle">Inspect vehicle imagery, assess structural damage, and generate official customer reports</p>
+  </div>
+</div>
+
+<!-- Input Section -->
+<div class="card" id="inputSection">
+  <div class="card-title">
+    <span>1. Select Vehicle Owner (Mandatory)</span>
+  </div>
+  
+  <div class="alert alert-info" style="margin-bottom: 1.25rem;">
+    <span>ℹ️</span>
+    <div>
+      <strong>Report Ownership Required:</strong> You must assign this analysis to a registered vehicle owner. Once generated, this report will automatically appear in their personal User Portal.
+    </div>
+  </div>
+
+  <div class="form-group" style="max-width: 600px; margin-bottom: 2rem;">
+    <label class="form-label" for="userSelect">
+      Select Registered User <span style="color: var(--accent-red);">*</span>
+    </label>
+    <select id="userSelect" class="form-control" required>
+      <option value="">-- Choose a registered vehicle owner --</option>
+    </select>
+    <small style="color: var(--text-dim); margin-top: 0.25rem;">
+      Don't see the owner? They must first create an account through the User Portal registration page.
+    </small>
+  </div>
+
+  <div class="card-title" style="border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+    <span>2. Vehicle Image Input</span>
+  </div>
+
+  <div class="upload-grid">
+    <!-- Local path option -->
+    <div>
+      <div class="form-group">
+        <label class="form-label" for="localFolder">
+          Image Folder Path <small>(local computer directory)</small>
+        </label>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="localFolder" class="form-control" placeholder="C:\Users\...\Desktop\Car">
+          <button type="button" class="btn btn-outline btn-sm" id="btnBrowseLocal">Browse</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="localName">
+          Image Filename <small>(e.g. car_front.jpg)</small>
+        </label>
+        <input type="text" id="localName" class="form-control" placeholder="car_front.jpg">
+      </div>
+
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+        You can select a file directly from your computer, or enter a folder path and filename for trusted local processing.
+      </p>
+    </div>
+
+    <!-- Dropzone and Camera -->
+    <div>
+      <div class="dropzone" id="dropzone" tabindex="0">
+        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
+        <img id="imagePreview" alt="Selected vehicle preview" style="display: none;">
+        <div id="dropzonePrompt" style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 2.2rem;">📷</span>
+          <strong style="color: var(--text-main);">Drop vehicle photo here</strong>
+          <span style="font-size: 0.82rem; color: var(--text-dim);">or click to browse JPG, JPEG, PNG</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
+        <button type="button" class="btn btn-outline btn-sm" id="btnOpenCam">
+          <span>📹</span> Use Camera
+        </button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnClearImage" style="display: none;">
+          <span>✕</span> Clear Selected Image
+        </button>
+      </div>
+
+      <div class="camera-box" id="cameraBox" style="display: none;">
+        <video id="cameraVideo" autoplay playsinline muted></video>
+        <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
+          <button type="button" class="btn btn-primary btn-sm" id="btnSnapPhoto">Take Snapshot</button>
+          <button type="button" class="btn btn-outline btn-sm" id="btnCloseCam">Close Camera</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="analysisAlert" class="alert alert-error" style="display: none; margin-top: 1.5rem;"></div>
+
+  <div style="margin-top: 1.75rem; display: flex; align-items: center; gap: 1rem;">
+    <button type="button" id="btnAnalyze" class="btn btn-accent" style="padding: 0.85rem 2rem; font-size: 1rem;">
+      <span>⚡</span> Run AI Damage Analysis
+    </button>
+    <span id="analysisStatus" style="font-size: 0.9rem; color: var(--text-muted); display: none;">Processing computer vision pipeline…</span>
+  </div>
+</div>
+
+<!-- Results Section -->
+<div class="card" id="resultsSection" style="display: none;">
+  <div class="result-header">
+    <div>
+      <h2 style="font-size: 1.5rem; color: #fff;" id="resultTitle">Analysis Results</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem;" id="resultMeta"></p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <span id="resultSeverityBadge"></span>
+      <span class="badge" id="engineBadge" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);"></span>
+    </div>
+  </div>
+
+  <div id="fallbackWarningBanner" class="alert alert-warning" style="display: none;"></div>
+
+  <div class="alert alert-success" id="reportSavedBanner">
+    <span>✅</span>
+    <span id="savedBannerText">Official damage report successfully generated and saved to database!</span>
+  </div>
+
+  <!-- Preprocessing Stages -->
+  <h3 style="font-size: 1rem; color: #fff; margin-bottom: 0.75rem;">1. Image Preprocessing Pipeline</h3>
+  <div class="preprocessing-steps" id="stepsContainer"></div>
+
+  <!-- Annotated Image & Summary Facts -->
+  <div class="analysis-layout">
+    <div class="annotated-box">
+      <h3 style="font-size: 1rem; color: #fff; margin-bottom: 0.75rem;">2. Bounding Box Detection Overlay</h3>
+      <img id="annotatedImage" alt="Vehicle with damage detections">
+      <p style="font-size: 0.82rem; color: var(--text-dim); margin-top: 0.4rem; text-align: center;">
+        Detected structural damage regions are outlined with classification bounding boxes.
+      </p>
+    </div>
+
+    <div>
+      <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+        <h3 style="font-size: 1rem; color: #fff; margin-bottom: 0.85rem;">Inspection Summary</h3>
+        <dl class="facts-list" id="factsList"></dl>
+      </div>
+
+      <div class="cost-card">
+        <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Estimated Repair Cost</span>
+        <div class="cost-total" id="costTotal">-</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted);" id="costBreakdown">-</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Damage Details Table -->
+  <div style="margin-bottom: 2rem;">
+    <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 0.75rem;">3. Detected Damage Areas</h3>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Damage Category</th>
+            <th>Confidence / Metric</th>
+            <th>Dimensions (px)</th>
+          </tr>
+        </thead>
+        <tbody id="damagesTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Parts & Price Comparison -->
+  <div style="margin-bottom: 2rem;">
+    <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 0.75rem;">4. Damaged Components &amp; Vendor Price Quotes</h3>
+    <div id="partsContainer"></div>
+  </div>
+
+  <!-- Repair Recommendation -->
+  <div style="background: rgba(245, 158, 11, 0.08); border-left: 4px solid var(--accent-amber); padding: 1.2rem; border-radius: var(--radius-sm); margin-bottom: 2rem;">
+    <h4 style="color: var(--accent-amber); margin-bottom: 0.35rem; font-size: 0.95rem;">Recommended Repair Plan</h4>
+    <p id="recommendationText" style="color: var(--text-main); font-size: 0.95rem; line-height: 1.5;"></p>
+  </div>
+
+  <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+    <button type="button" class="btn btn-primary" id="btnAnalyzeAnother">Analyze Another Vehicle</button>
+    <a href="{{ url_for('admin_reports_page') }}" class="btn btn-outline">View In All Reports</a>
+    <button type="button" class="btn btn-outline" onclick="window.print()">Print Official Report</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  let selectedFile = null;
+  let cameraStream = null;
+
+  // Load registered users into selector
+  async function loadUsers() {
+    const sel = document.getElementById('userSelect');
+    try {
+      const res = await fetch('/api/admin/users/selectable');
+      const data = await res.json();
+      if (data.users && data.users.length > 0) {
+        sel.innerHTML = '<option value="">-- Choose a registered vehicle owner --</option>' +
+          data.users.map(u => `<option value="${u.user_id}">${esc(u.full_name || u.username)} (${esc(u.email)}) - @${esc(u.username)}</option>`).join('');
+      } else {
+        sel.innerHTML = '<option value="">No registered regular users available</option>';
+      }
+
+      // Check if user_id was passed in URL query param (e.g. from user management page)
+      const urlParams = new URLSearchParams(window.location.search);
+      const preselectUid = urlParams.get('user_id');
+      if (preselectUid) {
+        sel.value = preselectUid;
+      }
+    } catch (e) {
+      toast('Failed to load user list', 'error');
+    }
+  }
+
+  loadUsers();
+
+  // File pick & preview
+  function handleFile(f) {
+    if (!f) return;
+    if (!/\.(jpe?g|png)$/i.test(f.name)) {
+      showError('Only JPG, JPEG, or PNG images are supported.');
+      return;
+    }
+    selectedFile = f;
+    clearError();
+    document.getElementById('imagePreview').src = URL.createObjectURL(f);
+    document.getElementById('imagePreview').style.display = 'block';
+    document.getElementById('dropzonePrompt').style.display = 'none';
+    document.getElementById('localName').value = f.name;
+    document.getElementById('localFolder').value = '(Selected from browser upload)';
+    document.getElementById('btnClearImage').style.display = 'inline-flex';
+  }
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+
+  dropzone.onclick = () => fileInput.click();
+  document.getElementById('btnBrowseLocal').onclick = () => fileInput.click();
+  fileInput.onchange = e => handleFile(e.target.files[0]);
+
+  ['dragover', 'dragenter'].forEach(ev => dropzone.addEventListener(ev, e => {
+    e.preventDefault(); dropzone.classList.add('dragover');
+  }));
+  ['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, e => {
+    e.preventDefault(); dropzone.classList.remove('dragover');
+  }));
+  dropzone.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+
+  document.getElementById('btnClearImage').onclick = () => {
+    selectedFile = null;
+    fileInput.value = '';
+    document.getElementById('imagePreview').src = '';
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('dropzonePrompt').style.display = 'flex';
+    document.getElementById('localName').value = '';
+    document.getElementById('localFolder').value = '';
+    document.getElementById('btnClearImage').style.display = 'none';
+  };
+
+  // Camera functionality
+  function stopCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      cameraStream = null;
+    }
+    document.getElementById('cameraBox').style.display = 'none';
+  }
+
+  document.getElementById('btnOpenCam').onclick = async () => {
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      document.getElementById('cameraVideo').srcObject = cameraStream;
+      document.getElementById('cameraBox').style.display = 'flex';
+    } catch {
+      showError('Could not access camera. Please allow camera permissions or upload an image file.');
+    }
+  };
+
+  document.getElementById('btnCloseCam').onclick = stopCamera;
+  document.getElementById('btnSnapPhoto').onclick = () => {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob(blob => {
+      const captured = new File([blob], `camera_scan_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      handleFile(captured);
+      stopCamera();
+    }, 'image/jpeg', 0.92);
+  };
+
+  function showError(msg) {
+    const box = document.getElementById('analysisAlert');
+    box.textContent = msg;
+    box.style.display = 'flex';
+  }
+
+  function clearError() {
+    document.getElementById('analysisAlert').style.display = 'none';
+  }
+
+  // Analyze execution
+  document.getElementById('btnAnalyze').onclick = async () => {
+    clearError();
+    const targetUserId = document.getElementById('userSelect').value;
+    if (!targetUserId) {
+      showError('MANDATORY: Please select a registered vehicle owner before running analysis.');
+      document.getElementById('userSelect').focus();
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('user_id', targetUserId);
+
+    if (selectedFile && document.getElementById('localName').value === selectedFile.name) {
+      fd.append('image', selectedFile);
+    } else {
+      const folder = document.getElementById('localFolder').value.trim();
+      const name = document.getElementById('localName').value.trim();
+      if (!folder && !name) {
+        showError('Please select or upload an image file, or enter a folder path and name.');
+        return;
+      }
+      fd.append('folder', folder);
+      fd.append('name', name);
+    }
+
+    const btn = document.getElementById('btnAnalyze');
+    const status = document.getElementById('analysisStatus');
+    btn.disabled = true;
+    btn.textContent = 'Processing Image…';
+    status.style.display = 'inline';
+
+    try {
+      const res = await fetch('/api/admin/detect-damage', {
+        method: 'POST',
+        body: fd
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Damage analysis failed.');
+      }
+
+      renderResults(data);
+      toast('Vehicle inspection analysis completed and saved!', 'success');
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⚡ Run AI Damage Analysis';
+      status.style.display = 'none';
+    }
+  };
+
+  function renderResults(r) {
+    document.getElementById('inputSection').style.display = 'none';
+    const resSec = document.getElementById('resultsSection');
+    resSec.style.display = 'block';
+
+    document.getElementById('resultTitle').textContent = r.damaged ? 'Damage Detected on Vehicle' : 'Vehicle Condition: No Damage Detected';
+    document.getElementById('resultMeta').textContent = `Report ID: ${r.id} · Analysis Timestamp: ${r.date} · Owner: ${r.target_user ? r.target_user.full_name + ' (' + r.target_user.email + ')' : 'Assigned'}`;
+
+    document.getElementById('resultSeverityBadge').innerHTML = severityBadge(r.severity);
+    document.getElementById('engineBadge').textContent = r.engine || 'Vision Engine';
+
+    // Warnings
+    const warnBox = document.getElementById('fallbackWarningBanner');
+    if (r.warning) {
+      warnBox.textContent = '⚠️ ' + r.warning;
+      warnBox.style.display = 'flex';
+    } else {
+      warnBox.style.display = 'none';
+    }
+
+    // Preprocessing Steps
+    const stepsDiv = document.getElementById('stepsContainer');
+    if (r.steps && r.steps.length) {
+      stepsDiv.innerHTML = r.steps.map(s => `
+        <div class="step-card">
+          <img src="/uploads/${s.file}" alt="${esc(s.label)}">
+          <div class="step-label">${esc(s.label)}</div>
+        </div>
+      `).join('');
+    }
+
+    // Annotated Image
+    document.getElementById('annotatedImage').src = `/uploads/${r.annotated}`;
+
+    // Facts
+    const facts = [
+      ['Vehicle Classification', r.vehicle?.label || 'Sedan'],
+      ['Damage Identified', r.damaged ? 'Yes' : 'No'],
+      ['Damage Categories', r.damage_types?.join(', ') || 'None'],
+      ['Overall Severity', r.severity || 'None'],
+      ['Model / Heuristic Score', (r.confidence ? r.confidence + '%' : '-')],
+      ['Detection Pipeline', r.engine || 'OpenCV']
+    ];
+    document.getElementById('factsList').innerHTML = facts.map(([k, v]) => `
+      <dt>${k}</dt><dd>${esc(v)}</dd>
+    `).join('');
+
+    // Costs
+    if (r.damaged && r.cost) {
+      document.getElementById('costTotal').textContent = `${inr(r.cost.min)} – ${inr(r.cost.max)}`;
+      document.getElementById('costBreakdown').textContent = `Estimated Labour: ${inr(r.cost.labour)} | Estimated Parts: ${inr(r.cost.parts)}`;
+    } else {
+      document.getElementById('costTotal').textContent = '₹0';
+      document.getElementById('costBreakdown').textContent = 'No repair actions needed';
+    }
+
+    // Damages Table
+    const dBody = document.getElementById('damagesTableBody');
+    if (r.damages && r.damages.length) {
+      dBody.innerHTML = r.damages.map(d => `
+        <tr>
+          <td><strong>${esc(d.type)}</strong></td>
+          <td>${(d.conf * 100).toFixed(1)}%</td>
+          <td>${d.w} × ${d.h} px</td>
+        </tr>
+      `).join('');
+    } else {
+      dBody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No damage components identified.</td></tr>';
+    }
+
+    // Parts & Comparison
+    const pContainer = document.getElementById('partsContainer');
+    if (r.parts && r.parts.length) {
+      pContainer.innerHTML = r.parts.map(p => `
+        <div class="card" style="margin-bottom: 1rem; background: var(--bg-surface);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div>
+              <strong style="color: #fff; font-size: 1.05rem;">${esc(p.name)}</strong>
+              <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 0.5rem;">(${esc(p.damage)} → Action: <strong>${esc(p.action)}</strong>)</span>
+            </div>
+          </div>
+          ${p.prices && p.prices.length ? `
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Vendor / Source</th>
+                    <th>Estimated Price</th>
+                    <th>Availability / Delivery</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${p.prices.map(pr => `
+                    <tr>
+                      <td>${esc(pr.vendor)}</td>
+                      <td><strong style="color: var(--accent-green);">${inr(pr.price)}</strong></td>
+                      <td style="color: var(--text-muted);">${esc(pr.delivery)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : '<p style="color: var(--text-muted); font-size: 0.85rem;">This component is repairable without replacement.</p>'}
+        </div>
+      `).join('');
+    } else {
+      pContainer.innerHTML = '<p style="color: var(--text-muted);">No replacement parts required for this assessment.</p>';
+    }
+
+    // Recommendation
+    document.getElementById('recommendationText').textContent = r.recommendation || 'No repair needed.';
+    resSec.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  document.getElementById('btnAnalyzeAnother').onclick = () => {
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('inputSection').style.display = 'block';
+    document.getElementById('btnClearImage').click();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+</script>
+{% endblock %}

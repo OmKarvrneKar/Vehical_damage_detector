@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}{% endblock %} – Vehicle Damage Detection</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"></head>
+<body>
+<header class="top">
+  <strong>Vehicle Damage Detection</strong>
+  <nav>
+    <a href="{{ url_for('dashboard') }}" class="{{ 'on' if request.endpoint=='dashboard' }}">Analyse</a>
+    <a href="{{ url_for('analytics_page') }}" class="{{ 'on' if request.endpoint=='analytics_page' }}">Analytics</a>
+    <a href="{{ url_for('profile_page') }}" class="{{ 'on' if request.endpoint=='profile_page' }}">{{ user }}</a>
+    <a class="btn ghost" href="{{ url_for('detect.download') }}">Download Excel</a>
+    <a class="btn ghost" href="{{ url_for('logout') }}">Sign out</a>
+  </nav>
+</header>
+<main class="wrap">{% block body %}{% endblock %}</main>
+{% block script %}{% endblock %}
+</body></html>

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Create Account – Vehicle Damage Detection System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card" style="width: min(480px, 100%);">
+      <div class="auth-header">
+        <div style="width: 48px; height: 48px; margin: 0 auto 1rem; border-radius: 12px; background: rgba(59, 130, 246, 0.15); display: grid; place-items: center; font-size: 1.5rem; color: var(--primary);">
+          ✨
+        </div>
+        <h2>Create Owner Account</h2>
+        <p>Register to receive official damage reports and cost estimates</p>
+      </div>
+
+      <div id="alertBox" class="alert alert-error" style="display: none;"></div>
+
+      <form id="registerForm">
+        <div class="form-group">
+          <label class="form-label" for="fullName">Full Name</label>
+          <input type="text" id="fullName" class="form-control" placeholder="e.g. John Doe" required autocomplete="name" autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="username">Username <small>(letters, numbers, underscore)</small></label>
+          <input type="text" id="username" class="form-control" placeholder="e.g. johndoe" required autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Email Address <small>(primary login ID)</small></label>
+          <input type="email" id="email" class="form-control" placeholder="john@example.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password <small>(min. 6 characters)</small></label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirmPassword">Confirm Password</label>
+          <input type="password" id="confirmPassword" class="form-control" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+          Register Account
+        </button>
+      </form>
+
+      <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); font-size: 0.9rem; text-align: center; display: flex; flex-direction: column; gap: 0.6rem;">
+        <p>
+          Already have an account?
+          <a href="{{ url_for('user_login_page') }}" style="color: var(--primary); font-weight: 600; text-decoration: none;">Sign in here</a>
+        </p>
+        <p>
+          <a href="{{ url_for('home_page') }}" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">← Return to portal selector</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script>
+    const form = document.getElementById('registerForm');
+    const alertBox = document.getElementById('alertBox');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      alertBox.style.display = 'none';
+
+      const p1 = document.getElementById('password').value;
+      const p2 = document.getElementById('confirmPassword').value;
+
+      if (p1 !== p2) {
+        alertBox.textContent = 'Passwords do not match. Please verify both password entries.';
+        alertBox.style.display = 'flex';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account…';
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name: document.getElementById('fullName').value.trim(),
+            username: document.getElementById('username').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            password: p1,
+            confirm_password: p2
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          window.location.href = data.redirect || '/user/dashboard';
+        } else {
+          alertBox.innerHTML = (data.error || 'Registration failed.') +
+            (data.error && data.error.includes('already registered')
+              ? ' <a href="/user/login" style="color: #fff; font-weight: bold; margin-left: 0.5rem; text-decoration: underline;">Go to Sign In</a>'
+              : '');
+          alertBox.style.display = 'flex';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Register Account';
+        }
+      } catch (err) {
+        alertBox.textContent = 'Server connection error. Please try again.';
+        alertBox.style.display = 'flex';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Register Account';
+      }
+    };
+  </script>
+</body>
+</html>

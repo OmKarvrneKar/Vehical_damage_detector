@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>User Sign In – Vehicle Damage Detection System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div style="width: 48px; height: 48px; margin: 0 auto 1rem; border-radius: 12px; background: rgba(6, 182, 212, 0.15); display: grid; place-items: center; font-size: 1.5rem; color: var(--accent-cyan);">
+          🚗
+        </div>
+        <h2>Vehicle Owner Sign In</h2>
+        <p>Access your official damage reports &amp; repair assessments</p>
+      </div>
+
+      <div id="alertBox" class="alert alert-error" style="display: none;"></div>
+
+      <form id="userLoginForm">
+        <div class="form-group">
+          <label class="form-label" for="userEmail">Email Address</label>
+          <input type="email" id="userEmail" class="form-control" placeholder="your.name@example.com" required autocomplete="email" autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="userPassword">Password</label>
+          <input type="password" id="userPassword" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+          Sign In
+        </button>
+      </form>
+
+      <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); font-size: 0.9rem; text-align: center; display: flex; flex-direction: column; gap: 0.6rem;">
+        <p>
+          Don't have an account?
+          <a href="{{ url_for('user_register_page') }}" style="color: var(--primary); font-weight: 600; text-decoration: none;">Create an account</a>
+        </p>
+        <p>
+          <a href="{{ url_for('home_page') }}" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">← Return to portal selector</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script>
+    const form = document.getElementById('userLoginForm');
+    const alertBox = document.getElementById('alertBox');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      alertBox.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in…';
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('userEmail').value.trim(),
+            password: document.getElementById('userPassword').value
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          window.location.href = data.redirect || '/user/dashboard';
+        } else {
+          alertBox.textContent = data.error || 'Invalid email or password.';
+          alertBox.style.display = 'flex';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign In';
+        }
+      } catch (err) {
+        alertBox.textContent = 'Server connection error. Please try again.';
+        alertBox.style.display = 'flex';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In';
+      }
+    };
+  </script>
+</body>
+</html>

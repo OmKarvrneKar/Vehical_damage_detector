@@ -1,0 +1,151 @@
+{% extends "base_admin.html" %}
+{% block title %}Admin Profile{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Administrator Profile &amp; Settings</h1>
+    <p class="page-subtitle">Manage administrator credentials and review personal authentication logs</p>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+  <!-- Profile Info -->
+  <div class="card">
+    <div class="card-title">
+      <span>Account Information</span>
+    </div>
+    <dl class="facts-list" id="adminInfo">
+      <dt>Administrator</dt><dd>{{ session.get('full_name') or 'System Administrator' }}</dd>
+      <dt>Email</dt><dd>{{ session.get('email') }}</dd>
+      <dt>Username</dt><dd>{{ session.get('username') }}</dd>
+      <dt>Role</dt><dd><span class="badge badge-admin">Administrator</span></dd>
+    </dl>
+  </div>
+
+  <!-- Change Password Form -->
+  <div class="card">
+    <div class="card-title">
+      <span>Update Admin Password</span>
+    </div>
+
+    <div id="pwAlert" class="alert alert-error" style="display: none;"></div>
+
+    <form id="changePasswordForm">
+      <div class="form-group">
+        <label class="form-label" for="oldPassword">Current Password</label>
+        <input type="password" id="oldPassword" class="form-control" required autocomplete="current-password">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="newPassword">New Password <small>(min. 6 characters)</small></label>
+        <input type="password" id="newPassword" class="form-control" minlength="6" required autocomplete="new-password">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="confirmNewPassword">Confirm New Password</label>
+        <input type="password" id="confirmNewPassword" class="form-control" minlength="6" required autocomplete="new-password">
+      </div>
+
+      <button type="submit" id="btnUpdatePassword" class="btn btn-primary" style="margin-top: 0.5rem;">
+        Update Password
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Personal Login History -->
+<div class="card">
+  <div class="card-title">
+    <span>Administrator Login History</span>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Outcome</th>
+          <th>Timestamp</th>
+          <th>IP Address</th>
+        </tr>
+      </thead>
+      <tbody id="adminLoginsBody">
+        <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading your login history…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  async function loadProfile() {
+    try {
+      const res = await fetch('/api/profile');
+      const data = await res.json();
+      const tbody = document.getElementById('adminLoginsBody');
+      if (data.logins && data.logins.length) {
+        tbody.innerHTML = data.logins.map(l => `
+          <tr>
+            <td>Login Session</td>
+            <td><span class="badge badge-success">Success</span></td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">${esc(l['Login Time'] || l.timestamp)}</td>
+            <td style="font-family: monospace; font-size: 0.85rem;">${esc(l['IP Address'] || l.ip_address || '-')}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No recent logins recorded.</td></tr>';
+      }
+    } catch (e) {
+      toast('Failed to load profile history', 'error');
+    }
+  }
+
+  loadProfile();
+
+  document.getElementById('changePasswordForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById('pwAlert');
+    alertBox.style.display = 'none';
+
+    const p1 = document.getElementById('newPassword').value;
+    const p2 = document.getElementById('confirmNewPassword').value;
+    if (p1 !== p2) {
+      alertBox.textContent = 'New passwords do not match.';
+      alertBox.style.display = 'flex';
+      return;
+    }
+
+    const btn = document.getElementById('btnUpdatePassword');
+    btn.disabled = true;
+    btn.textContent = 'Updating…';
+
+    try {
+      const res = await fetch('/api/admin/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          old_password: document.getElementById('oldPassword').value,
+          new_password: p1,
+          confirm_password: p2
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        toast('Password updated successfully!', 'success');
+        document.getElementById('changePasswordForm').reset();
+      } else {
+        alertBox.textContent = data.error || 'Failed to update password.';
+        alertBox.style.display = 'flex';
+      }
+    } catch (err) {
+      alertBox.textContent = 'Server connection error.';
+      alertBox.style.display = 'flex';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Update Password';
+    }
+  };
+</script>
+{% endblock %}

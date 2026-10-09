@@ -1,0 +1,77 @@
+{% extends "base_admin.html" %}
+{% block title %}System Analytics{% endblock %}
+
+{% block body %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Global Damage Analytics</h1>
+    <p class="page-subtitle">Aggregate data visualization across all official vehicle inspections</p>
+  </div>
+</div>
+
+<div class="stats-grid" id="analyticsTiles">
+  <div class="stat-card">
+    <span class="stat-label">Total Reports</span>
+    <span class="stat-value" id="anTotal">-</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Damage Detected Cases</span>
+    <span class="stat-value" id="anDamaged" style="color: var(--accent-amber);">-</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Most Common Damage</span>
+    <span class="stat-value" id="anTopType" style="font-size: 1.4rem;">-</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Avg. Detection Score</span>
+    <span class="stat-value" id="anConf">-</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Avg. Max Repair Estimate</span>
+    <span class="stat-value" id="anCost" style="color: var(--accent-green);">-</span>
+  </div>
+</div>
+
+<div class="card" id="chartsContainer">
+  <div class="card-title">
+    <span>Visual Statistical Breakdowns</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+    <div style="background: var(--bg-surface); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); text-align: center;">
+      <h3 style="font-size: 1rem; color: #fff; margin-bottom: 1rem;">Damage Category Frequency</h3>
+      <img src="/api/admin/analytics/chart/types.png" alt="Damage type frequency chart" style="max-width: 100%; border-radius: var(--radius-sm);">
+    </div>
+    <div style="background: var(--bg-surface); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); text-align: center;">
+      <h3 style="font-size: 1rem; color: #fff; margin-bottom: 1rem;">Severity Ratio</h3>
+      <img src="/api/admin/analytics/chart/severity.png" alt="Severity split chart" style="max-width: 100%; border-radius: var(--radius-sm);">
+    </div>
+  </div>
+
+  <div style="background: var(--bg-surface); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); text-align: center;">
+    <h3 style="font-size: 1rem; color: #fff; margin-bottom: 1rem;">Daily Inspection Volume by Severity</h3>
+    <img src="/api/admin/analytics/chart/trend.png" alt="Trend over time chart" style="max-width: 100%; border-radius: var(--radius-sm);">
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  async function loadAnalytics() {
+    try {
+      const res = await fetch('/api/admin/analytics/summary');
+      const data = await res.json();
+
+      document.getElementById('anTotal').textContent = data.total ?? 0;
+      document.getElementById('anDamaged').textContent = data.damaged ?? 0;
+      document.getElementById('anTopType').textContent = data.top_type || '-';
+      document.getElementById('anConf').textContent = (data.avg_confidence ? data.avg_confidence + '%' : '0%');
+      document.getElementById('anCost').textContent = inr(data.avg_cost);
+    } catch (e) {
+      toast('Failed to load analytics summary', 'error');
+    }
+  }
+
+  loadAnalytics();
+</script>
+{% endblock %}
