@@ -30,3 +30,10 @@ uploads/temp/*
 
 # Database journal files
 *.db-journal
+
+# Training datasets and run artifacts (large; keep out of Git)
+data/dataset/
+runs/
+
+# Base/pretrained YOLO weights (not project output)
+yolov8n.pt

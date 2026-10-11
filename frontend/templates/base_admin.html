@@ -24,23 +24,23 @@
       </div>
 
       <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_login_activity_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_login_activity_page' }}">
+          <span>🕒</span> Login Activity
+        </a>
+        <a href="{{ url_for('admin_users_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_users_page' }}">
+          <span>👥</span> User Management
+        </a>
         <a href="{{ url_for('admin_dashboard_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_dashboard_page' }}">
           <span>📊</span> Dashboard
         </a>
         <a href="{{ url_for('admin_analyze_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_analyze_page' }}">
           <span>🔍</span> Analyze Vehicle
         </a>
-        <a href="{{ url_for('admin_users_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_users_page' }}">
-          <span>👥</span> User Management
-        </a>
-        <a href="{{ url_for('admin_login_activity_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_login_activity_page' }}">
-          <span>🕒</span> Login Activity
+        <a href="{{ url_for('admin_analytics_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_analytics_page' }}">
+          <span>📈</span> Analytics
         </a>
         <a href="{{ url_for('admin_reports_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_reports_page' }}">
           <span>📋</span> All Damage Reports
-        </a>
-        <a href="{{ url_for('admin_analytics_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_analytics_page' }}">
-          <span>📈</span> Analytics
         </a>
         <a href="{{ url_for('admin_download_excel_page') }}" class="nav-item {{ 'active' if request.endpoint == 'admin_download_excel_page' }}">
           <span>📥</span> Download Excel

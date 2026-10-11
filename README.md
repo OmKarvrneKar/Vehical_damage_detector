@@ -83,6 +83,7 @@ Open your browser and navigate to:
 | `ADMIN_USERNAME` | `admin` | Default admin username. |
 | `ADMIN_FULL_NAME` | `System Administrator` | Default admin display name. |
 | `ALLOW_LOCAL_PATHS` | `false` | Disabled by default for security. Set to `true` only in trusted local development environments. |
+| `YOLO_CONF` | `0.10` | Minimum confidence for YOLO detections. Lower it (e.g. `0.05`) if a weak model hides damage; raise it to reduce false positives. |
 
 ---
 

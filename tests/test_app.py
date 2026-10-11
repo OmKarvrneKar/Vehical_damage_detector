@@ -526,13 +526,55 @@ def test_33_image_preprocessing_pipeline(test_env):
     assert (out_dir / f"{rid}_annotated.jpg").exists()
 
 
-def test_34_opencv_fallback_works_when_model_absent(test_env):
+def test_34_opencv_fallback_works_when_model_absent(test_env, monkeypatch):
+    # Simulate a deployment without trained weights so the OpenCV fallback path is exercised.
+    monkeypatch.setattr(damage_detector, "_yolo", None)
+    monkeypatch.setattr(damage_detector, "_model_error", "weights absent (test)")
     rid = "TEST-R101"
     out_dir = test_env["tmp_path"] / "fallback_out"
     res = damage_detector.analyze(test_env["test_img_path"], out_dir, rid)
     assert res.get("fallback_active") is True
     assert "heuristic" in res.get("engine", "").lower()
     assert "heuristic" in res.get("warning", "").lower()
+
+
+def test_34b_trained_yolo_model_active_and_class_map_matches(test_env):
+    # The deployed 14-class weights must load and expose their classes in ID order.
+    status = damage_detector.model_status()
+    assert status["loaded"] is True, f"YOLO model failed to load: {status['error']}"
+    assert len(status["classes"]) == 14
+
+    expected = {
+        0: ("bonnet-dent", "Dent"),
+        1: ("boot-dent", "Dent"),
+        2: ("doorouter-dent", "Dent"),
+        3: ("fender-dent", "Dent"),
+        4: ("front-bumper-dent", "Dent"),
+        5: ("Front-windscreen-damage", "Glass Damage"),
+        6: ("Headlight-damage", "Broken Lamp"),
+        7: ("quaterpanel-dent", "Dent"),
+        8: ("rear-bumper-dent", "Dent"),
+        9: ("Rear-windscreen-Damage", "Glass Damage"),
+        10: ("roof-dent", "Dent"),
+        11: ("Runningboard-Damage", "Broken Part"),
+        12: ("Sidemirror-Damage", "Broken Part"),
+        13: ("Taillight-Damage", "Broken Lamp"),
+    }
+    for cid, (raw, label) in expected.items():
+        assert status["classes"][cid] == raw
+        assert damage_detector._class_label(raw) == label
+
+    # The original Turkish label map must remain intact for the legacy checkpoint.
+    assert damage_detector._class_label("Çatlak") == "Crack"
+    assert damage_detector._class_label("Patlak Lastik") == "Flat Tire"
+
+    # End-to-end: analyze() must actually run the YOLO engine, not the fallback.
+    rid = "TEST-R102"
+    out_dir = test_env["tmp_path"] / "yolo_out"
+    res = damage_detector.analyze(test_env["test_img_path"], out_dir, rid)
+    assert res.get("fallback_active") is False
+    assert res.get("engine") == "YOLO model"
+    assert (out_dir / f"{rid}_annotated.jpg").exists()
 
 
 def test_35_analytics_work_with_empty_and_populated_data(test_env):

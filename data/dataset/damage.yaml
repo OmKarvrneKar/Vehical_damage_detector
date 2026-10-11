@@ -1,13 +1,13 @@
 # YOLO dataset config. Put images in images/{train,val,test} and YOLO-format labels in labels/{train,val,test}.
+# NOTE: names must match the class order embedded in backend/models/damage_model.pt (6 classes).
 path: data/dataset
 train: images/train
 val: images/val
 test: images/test
 names:
-  0: scratch
-  1: dent
-  2: crack
-  3: broken_part
-  4: glass_damage
-  5: bumper_damage
-  6: severe
+  0: Çatlak
+  1: Göçük
+  2: Cam Kırığı
+  3: Lamba Kırığı
+  4: Çizik
+  5: Patlak Lastik

@@ -10,6 +10,8 @@ FRONTEND_DIR = ROOT / "frontend"
 EXCEL_PATH = DATA_DIR / "vehicle_damage_reports.xlsx"
 DB_PATH = DATA_DIR / "vehicle_damage.db"
 MODEL_PATH = Path(__file__).parent / "models" / "damage_model.pt"
+# Higher-priority model override: if this trained 14-class checkpoint exists, it is preferred.
+MODEL_PATH_14 = Path(__file__).parent / "models" / "damage_model_14.pt"
 
 # Environment detection
 IS_PRODUCTION = (
@@ -48,6 +50,10 @@ ADMIN_FULL_NAME = os.environ.get("ADMIN_FULL_NAME", "System Administrator").stri
 
 MAX_UPLOAD_MB = 10
 ALLOWED_EXT = {".jpg", ".jpeg", ".png"}
+
+# Minimum confidence for YOLO detections. Ultralytics' default (0.25) hides the trained model's
+# under-confident predictions, so it is tunable via the YOLO_CONF environment variable.
+YOLO_CONF = float(os.environ.get("YOLO_CONF", "0.10"))
 
 # SECURITY REQUIREMENT: ALLOW_LOCAL_PATHS must be False by default.
 # Only enabled if explicitly set to true in trusted development environments.

@@ -11,31 +11,85 @@ import numpy as np
 import config
 
 _yolo = None
+_model_error = None
+_loaded_path = None
 try:
-    if config.MODEL_PATH.exists():
+    # Prefer the trained 14-class checkpoint when present; fall back to the original model, then to
+    # the OpenCV heuristic baseline (no weights / no ultralytics).
+    _path = (
+        config.MODEL_PATH_14 if config.MODEL_PATH_14.exists()
+        else config.MODEL_PATH if config.MODEL_PATH.exists() else None
+    )
+    if _path is not None:
         from ultralytics import YOLO
-        _yolo = YOLO(str(config.MODEL_PATH))
-except Exception:
+        _yolo = YOLO(str(_path))
+        _loaded_path = str(_path)
+except Exception as e:                                        # weights missing/corrupt or ultralytics absent
+    _model_error = f"{type(e).__name__}: {e}"
     _yolo = None
 
-LABELS = {"scratch": "Scratch", "dent": "Dent", "crack": "Crack", "broken_part": "Broken Part",
-          "broken_lamp": "Broken Part", "glass_damage": "Glass Damage", "broken_glass": "Glass Damage",
-          "bumper_damage": "Bumper Damage", "severe": "Severe / Fully Damaged"}
+# Display label for every class embedded in the loaded weights, keyed by the model's own class name
+# (class-ID order is taken straight from the loaded weights, never reordered). Both the original
+# 6-class Turkish weights and the 14-class English "Automobile Damage Detection" weights are covered.
+# Note that keys are matched lower-cased, so all mappings are stored in lower case.
+CLASS_DISPLAY = {
+    "çatlak": "Crack",               # Turkey 6-class: id 0
+    "göçük": "Dent",                 # id 1
+    "cam kırığı": "Glass Damage",    # id 2
+    "lamba kırığı": "Broken Lamp",   # id 3
+    "çizik": "Scratch",              # id 4
+    "patlak lastik": "Flat Tire",    # id 5
+    # Accept the English dataset spelling too, so the code also works with a re-trained model.
+    "crack": "Crack", "dent": "Dent", "glass_damage": "Glass Damage", "broken_glass": "Glass Damage",
+    "broken_lamp": "Broken Lamp", "scratch": "Scratch", "flat_tire": "Flat Tire",
+    "broken_part": "Broken Part", "bumper_damage": "Bumper Damage", "severe": "Severe / Fully Damaged",
+    # 14-class part-based dataset ("Automobile Damage Detection"): every dent maps to Dent, the
+    # remaining classes map to a matching canonical damage label used by the pricing/severity logic.
+    "bonnet-dent": "Dent", "boot-dent": "Dent", "doorouter-dent": "Dent", "fender-dent": "Dent",
+    "front-bumper-dent": "Dent", "quaterpanel-dent": "Dent", "rear-bumper-dent": "Dent",
+    "roof-dent": "Dent", "front-windscreen-damage": "Glass Damage", "rear-windscreen-damage": "Glass Damage",
+    "headlight-damage": "Broken Lamp", "taillight-damage": "Broken Lamp",
+    "runningboard-damage": "Broken Part", "sidemirror-damage": "Broken Part",
+}
+# Where the raw 14-class name already tells us the exact vehicle part, reuse the part names the cost
+# logic already understands instead of guessing from the box position.
+PART_BY_CLASS = {
+    "headlight-damage": "Headlamp / Tail-lamp", "taillight-damage": "Headlamp / Tail-lamp",
+    "front-windscreen-damage": "Windshield / Window glass", "rear-windscreen-damage": "Windshield / Window glass",
+    "runningboard-damage": "Rocker panel / Lower body", "doorouter-dent": "Door panel",
+}
 COLORS = {"Scratch": (0, 165, 255), "Dent": (0, 0, 230), "Crack": (200, 0, 160), "Broken Part": (0, 60, 255),
-          "Glass Damage": (220, 160, 0), "Bumper Damage": (0, 120, 255), "Severe / Fully Damaged": (0, 0, 160)}
+          "Glass Damage": (220, 160, 0), "Bumper Damage": (0, 120, 255), "Broken Lamp": (0, 215, 255),
+          "Flat Tire": (128, 0, 128), "Severe / Fully Damaged": (0, 0, 160)}
 LABOUR = {"Scratch": 1500, "Dent": 3500, "Crack": 4000, "Broken Part": 6000, "Glass Damage": 3000,
-          "Bumper Damage": 5000, "Severe / Fully Damaged": 15000}
+          "Bumper Damage": 5000, "Broken Lamp": 2500, "Flat Tire": 1800, "Severe / Fully Damaged": 15000}
 SEV_MULT = {"Minor": 1.0, "Moderate": 1.6, "Severe": 2.5, "None": 0}
 VEHICLE_MULT = {"Sedan": 1.0, "Hatchback": 0.85, "SUV": 1.4, "Truck": 1.6, "Motorcycle": 0.5}
-REPLACE_TYPES = {"Broken Part", "Glass Damage", "Crack", "Bumper Damage", "Severe / Fully Damaged"}
-PART_PRICE = {"Bumper": 7500, "Headlamp / Tail-lamp": 9000, "Door panel": 14000,
+REPLACE_TYPES = {"Broken Part", "Glass Damage", "Crack", "Bumper Damage", "Broken Lamp", "Flat Tire",
+                 "Severe / Fully Damaged"}
+PART_PRICE = {"Bumper": 7500, "Headlamp / Tail-lamp": 9000, "Door panel": 14000, "Tire": 4500,
               "Windshield / Window glass": 8500, "Rocker panel / Lower body": 5500}
+# Damage types that map to a specific part regardless of where the box sits on the vehicle.
+TYPE_PART = {"Flat Tire": "Tire", "Broken Lamp": "Headlamp / Tail-lamp"}
 VENDORS = [("Authorised dealer (OEM)", 1.00, "3-5 days"), ("Online marketplace", 0.70, "4-7 days"),
            ("Local aftermarket shop", 0.60, "1-2 days")]
 ACTION = {"Scratch": "Polish / touch-up paint", "Dent": "Paintless dent repair or panel beating",
           "Crack": "Crack repair; replace the part if it spreads", "Broken Part": "Replace the part",
           "Glass Damage": "Replace the glass", "Bumper Damage": "Repair or replace the bumper",
+          "Broken Lamp": "Replace the lamp assembly", "Flat Tire": "Repair or replace the tire",
           "Severe / Fully Damaged": "Full body-shop assessment; check insurance total-loss"}
+
+
+def _class_label(name):
+    """Map a model class name to its canonical display label without altering class-ID order."""
+    key = str(name).strip().lower()
+    return CLASS_DISPLAY.get(key, CLASS_DISPLAY.get(key.replace(" ", "_").replace("-", "_"), str(name).strip().title()))
+
+
+def model_status():
+    """Expose the current engine state so routes/tests can report it honestly."""
+    return {"loaded": _yolo is not None, "path": _loaded_path or str(config.MODEL_PATH),
+            "classes": dict(_yolo.names) if _yolo is not None else {}, "error": _model_error}
 
 
 def _stage(stages, name, t0):
@@ -89,8 +143,11 @@ def analyze(path: Path, out_dir: Path, rid: str):
     vehicle = _recognise(cw, ch)
     t = _stage(stages, "Vehicle recognition", t)
 
-    # 5. detect + classify damage (coordinates relative to the crop)
-    dets = _yolo_detect(crop) if _yolo else _baseline_detect(crop)
+    # 5. detect + classify damage. YOLO runs on the unprocessed (only resized) image, which matches
+    # the distribution the model was trained on; the OpenCV baseline keeps using the enhanced crop.
+    # YOLO boxes come back in full-frame coordinates and are clipped to the vehicle crop so the rest
+    # of the pipeline (analysis + annotation) keeps working with crop-relative coordinates.
+    dets = _yolo_detect(resized, (ox, oy, cw, ch)) if _yolo else _baseline_detect(crop)
     t = _stage(stages, "Damage detection & classification", t)
 
     # 6. severity
@@ -129,7 +186,10 @@ def analyze(path: Path, out_dir: Path, rid: str):
 
     warnings_list = []
     if fallback_active:
-        warnings_list.append("Heuristic detector active: Running OpenCV edge-density analysis because YOLO weights are not loaded. Scores are uncalibrated heuristics.")
+        reason = f" Model load error: {_model_error}." if _model_error else f" No weights found at {config.MODEL_PATH}."
+        warnings_list.append("Heuristic detector active: Running OpenCV edge-density analysis instead of the YOLO model." + reason + " Scores are uncalibrated heuristics.")
+    elif dets and max(d["conf"] for d in dets) < 0.35:
+        warnings_list.append("YOLO returned only low-confidence detections (below 35%): the model is uncertain, so verify these findings manually.")
     if not found:
         warnings_list.append("Vehicle could not be isolated clearly; full image was analyzed.")
     warning_text = " | ".join(warnings_list)
@@ -212,14 +272,24 @@ def _baseline_detect(img):
     return sorted(out, key=lambda d: -d["w"] * d["h"])[:6]
 
 
-def _yolo_detect(img):
-    res = _yolo(img, verbose=False)[0]
+def _yolo_detect(img, crop_box=None):
+    res = _yolo(img, verbose=False, conf=config.YOLO_CONF)[0]
     out = []
+    if res.boxes is None:
+        return out
+    ox, oy, cw, ch = crop_box if crop_box else (0, 0, img.shape[1], img.shape[0])
     for b in res.boxes:
-        name = res.names[int(b.cls)].lower().replace(" ", "_")
+        cid = int(b.cls)
+        raw = str(res.names[cid])
         x1, y1, x2, y2 = map(int, b.xyxy[0].tolist())
-        out.append({"type": LABELS.get(name, name.replace("_", " ").title()), "x": x1, "y": y1,
-                    "w": x2 - x1, "h": y2 - y1, "conf": round(float(b.conf), 3)})
+        # Clip the full-frame box to the vehicle region and convert to crop-relative coordinates.
+        nx1, ny1 = max(x1, ox), max(y1, oy)
+        nx2, ny2 = min(x2, ox + cw), min(y2, oy + ch)
+        if nx2 <= nx1 or ny2 <= ny1:
+            continue
+        out.append({"type": _class_label(raw), "class_id": cid, "class_name": raw,
+                    "part": PART_BY_CLASS.get(raw.lower()), "x": nx1 - ox, "y": ny1 - oy,
+                    "w": nx2 - nx1, "h": ny2 - ny1, "conf": round(float(b.conf), 3)})
     return out
 
 
@@ -227,14 +297,16 @@ def _parts(dets, w, h, severity):
     found = {}
     for d in dets:
         cx, cy = (d["x"] + d["w"] / 2) / w, (d["y"] + d["h"] / 2) / h
-        if cy < 0.35:
-            p = "Windshield / Window glass"
-        elif cx < 0.22 or cx > 0.78:
-            p = "Bumper" if cy > 0.6 else "Headlamp / Tail-lamp"
-        elif cy > 0.72:
-            p = "Rocker panel / Lower body"
-        else:
-            p = "Door panel"
+        p = d.get("part") or TYPE_PART.get(d["type"])
+        if not p:
+            if cy < 0.35:
+                p = "Windshield / Window glass"
+            elif cx < 0.22 or cx > 0.78:
+                p = "Bumper" if cy > 0.6 else "Headlamp / Tail-lamp"
+            elif cy > 0.72:
+                p = "Rocker panel / Lower body"
+            else:
+                p = "Door panel"
         needs = d["type"] in REPLACE_TYPES or severity == "Severe"
         found.setdefault(p, {"name": p, "damage": d["type"], "action": "Replace" if needs else "Repair"})
     for p in found.values():

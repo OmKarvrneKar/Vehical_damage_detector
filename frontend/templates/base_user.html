@@ -24,17 +24,17 @@
       </div>
 
       <nav class="sidebar-nav">
+        <a href="{{ url_for('user_profile_page') }}" class="nav-item {{ 'active' if request.endpoint == 'user_profile_page' }}">
+          <span>👤</span> My Profile
+        </a>
         <a href="{{ url_for('user_dashboard_page') }}" class="nav-item {{ 'active' if request.endpoint == 'user_dashboard_page' }}">
           <span>📊</span> Dashboard
-        </a>
-        <a href="{{ url_for('user_reports_page') }}" class="nav-item {{ 'active' if request.endpoint in ('user_reports_page', 'user_report_detail_page') }}">
-          <span>📋</span> My Damage Reports
         </a>
         <a href="{{ url_for('user_analyze_page') }}" class="nav-item {{ 'active' if request.endpoint == 'user_analyze_page' }}">
           <span>🔬</span> Analyze Vehicle
         </a>
-        <a href="{{ url_for('user_profile_page') }}" class="nav-item {{ 'active' if request.endpoint == 'user_profile_page' }}">
-          <span>👤</span> My Profile
+        <a href="{{ url_for('user_reports_page') }}" class="nav-item {{ 'active' if request.endpoint in ('user_reports_page', 'user_report_detail_page') }}">
+          <span>📋</span> My Damage Reports
         </a>
         <a href="{{ url_for('auth.logout') }}" class="nav-item" style="color: var(--accent-red); margin-top: auto;">
           <span>🚪</span> Sign Out
